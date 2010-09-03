@@ -129,6 +129,7 @@ class ServerThread extends Thread {
         /* TI HID port - end */
 
         HeadsetObserver headset = null;
+        HDMIObserver hdmi = null;
         DockObserver dock = null;
         UsbObserver usb = null;
         UiModeManagerService uiMode = null;
@@ -401,6 +402,14 @@ class ServerThread extends Thread {
                 headset = new HeadsetObserver(context);
             } catch (Throwable e) {
                 Slog.e(TAG, "Failure starting HeadsetObserver", e);
+            }
+
+            try {
+                Slog.i(TAG, "HDMI Observer");
+                // Listen for hdmi changes
+                hdmi = new HDMIObserver(context);
+            } catch (Throwable e) {
+                Slog.e(TAG, "Failure starting HDMIObserver", e);
             }
 
             try {
