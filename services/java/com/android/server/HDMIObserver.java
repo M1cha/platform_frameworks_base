@@ -37,9 +37,8 @@ class HDMIObserver extends UEventObserver {
     private static final String TAG = HDMIObserver.class.getSimpleName();
     private static final boolean LOG = true;
 
-    private static final String HDMI_UEVENT_MATCH = "DEVPATH=/devices/virtual/switch/hdmi";
-    private static final String HDMI_STATE_PATH = "/sys/class/switch/hdmi/state";
-    private static final String HDMI_NAME_PATH = "/sys/class/switch/hdmi/name";
+    private static final String HDMI_UEVENT_MATCH = "DEVPATH=/devices/omapdss/display2";
+    private static final String HDMIName = "hdmi";
 
     private int mHDMIState;
     private int mPrevHDMIState;
@@ -66,33 +65,30 @@ class HDMIObserver extends UEventObserver {
         if (LOG) Slog.v(TAG, "HDMI UEVENT: " + event.toString());
 
         try {
-            update(event.get("SWITCH_NAME"), Integer.parseInt(event.get("SWITCH_STATE")));
+            String action = event.get("ACTION");
+            int state;
+
+            if (action.equals("add")) {
+                state = 1;
+            } else if (action.equals("remove")) {
+                state = 0;
+            } else {
+                Slog.e(TAG, "Unknown HDMI UEvent action: " + action);
+                state = mHDMIState;
+            }
+            update(HDMIName, state);
         } catch (NumberFormatException e) {
             Slog.e(TAG, "Could not parse switch state from event " + event);
         }
     }
 
     private synchronized final void init() {
-        char[] buffer = new char[1024];
-
-        String newName = mHDMIName;
-        int newState = mHDMIState;
+        // it's safe to set initial state to unplugged
+        // we'll receive uevent if we boot-up with cable inserted
+	mHDMIState = 0;
         mPrevHDMIState = mHDMIState;
-        try {
-            FileReader file = new FileReader(HDMI_STATE_PATH);
-            int len = file.read(buffer, 0, 1024);
-            newState = Integer.valueOf((new String(buffer, 0, len)).trim());
 
-            file = new FileReader(HDMI_NAME_PATH);
-            len = file.read(buffer, 0, 1024);
-            newName = new String(buffer, 0, len).trim();
-        } catch (FileNotFoundException e) {
-            Slog.w(TAG, "This kernel does not have HDMI support");
-        } catch (Exception e) {
-            Slog.e(TAG, "" , e);
-        }
-
-        update(newName, newState);
+        update(HDMIName, mHDMIState);
     }
 
     private synchronized final void update(String newName, int newState) {
