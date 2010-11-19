@@ -118,6 +118,16 @@ static jboolean android_net_hotspot_unloadDriver(JNIEnv* env, jobject clazz)
 {
     return (jboolean)(::hotspot_unload_driver() == 0);
 }
+
+static jboolean android_net_wifi_setIPAddressCommand(JNIEnv* env, jobject clazz, jint ip)
+{
+    char cmdstr[256];
+
+    int numWritten = snprintf(cmdstr, sizeof(cmdstr), "DRIVER SETIP %d", ip);
+    int cmdTooLong = numWritten >= (int)sizeof(cmdstr);
+
+    return (jboolean)!cmdTooLong && doBooleanCommand(cmdstr, "OK");
+}
 #endif /*OMAP_ENHANCEMENT*/
 
 static jboolean android_net_wifi_startSupplicant(JNIEnv* env, jobject clazz)
@@ -549,6 +559,7 @@ static JNINativeMethod gWifiMethods[] = {
 #ifdef OMAP_ENHANCEMENT
     { "loadHotspotDriver", "()Z",  (void *)android_net_hotspot_loadDriver },
     { "unloadHotspotDriver", "()Z",  (void *)android_net_hotspot_unloadDriver },
+    { "setIPAddressCommand", "(I)Z", (void*) android_net_wifi_setIPAddressCommand },
 #endif /*OMAP_ENHANCEMENT*/
     { "startSupplicant", "()Z",  (void *)android_net_wifi_startSupplicant },
     { "stopSupplicant", "()Z",  (void *)android_net_wifi_stopSupplicant },
