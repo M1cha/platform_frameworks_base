@@ -57,6 +57,9 @@ MediaPlayer::MediaPlayer()
     mLockThreadId = 0;
     mAudioSessionId = AudioSystem::newAudioSessionId();
     mSendLevel = 0;
+#ifdef OMAP_ENHANCEMENT
+    mStateBeforeSuspend = mCurrentState;
+#endif
 }
 
 MediaPlayer::~MediaPlayer()
@@ -174,12 +177,22 @@ status_t MediaPlayer::invoke(const Parcel& request, Parcel *reply)
 
 status_t MediaPlayer::suspend() {
     Mutex::Autolock _l(mLock);
+#ifdef OMAP_ENHANCEMENT
+    mStateBeforeSuspend = mCurrentState;
+    mCurrentState = MEDIA_PLAYER_SUSPEND;
+#endif
     return mPlayer->suspend();
 }
 
 status_t MediaPlayer::resume() {
     Mutex::Autolock _l(mLock);
-    return mPlayer->resume();
+#ifdef OMAP_ENHANCEMENT
+    status_t ret = mPlayer->resume();
+    mCurrentState = mStateBeforeSuspend;
+    return ret;
+#else
+	return mPlayer->resume();
+#endif
 }
 
 status_t MediaPlayer::setMetadataFilter(const Parcel& filter)
