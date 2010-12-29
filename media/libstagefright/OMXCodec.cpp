@@ -979,6 +979,20 @@ status_t OMXCodec::setVideoPortFormatType(
             }
         }
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+        if (!strcmp("OMX.TI.DUCATI1.VIDEO.DECODER", mComponentName)) {
+            if ( (compressionFormat == OMX_VIDEO_CodingH263) &&
+                 (format.eCompressionFormat != compressionFormat) ) {
+                // Ducati Decoder returns MPEG4 as default compression type.
+                // Update H263 compression type
+                format.eCompressionFormat=compressionFormat;
+                found = true;
+                break;
+            }
+        format.eColorFormat = colorFormat; //HACK. Should be removed in 1.20 ducati release
+        }
+#endif
+
         if (format.eCompressionFormat == compressionFormat
             && format.eColorFormat == colorFormat) {
             found = true;
