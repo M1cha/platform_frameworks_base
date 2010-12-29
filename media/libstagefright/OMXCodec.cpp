@@ -537,6 +537,10 @@ uint32_t OMXCodec::getComponentQuirks(
                 quirks |= OMXCodec::kRequiresAllocateBufferOnOutputPorts;
         }
 
+        if(flags & kPreferInterlacedOutputContent) {
+                quirks |= OMXCodec::kInterlacedOutputContent;
+        }
+
     }
 #endif
     else if (!strncmp(componentName, "OMX.TI.", 7)) {

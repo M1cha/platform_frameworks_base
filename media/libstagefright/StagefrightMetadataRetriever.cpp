@@ -30,6 +30,10 @@
 
 namespace android {
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+extern bool isinterlaced(sp<MetaData> meta_track);
+#endif
+
 StagefrightMetadataRetriever::StagefrightMetadataRetriever()
     : mParsedMetaData(false),
       mAlbumArt(NULL) {
@@ -112,6 +116,12 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
 
 #ifdef OMAP_ENHANCEMENT
     flags |= OMXCodec::kPreferThumbnailMode;
+#ifdef TARGET_OMAP4
+    if(isinterlaced(source->getFormat()))
+    {
+      flags |= OMXCodec::kPreferInterlacedOutputContent;
+    }
+#endif
 #endif
 
     sp<MediaSource> decoder =
@@ -250,7 +260,7 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
                 (const uint8_t *)buffer->data() + buffer->range_offset(),
                 0, //1D buffer in 1.16 Ducati rls. If 2D buffer -> 4096 stride should be used
                 frame->mData, displayWidth * 2,
-                displayWidth,displayHeight,buffer->range_offset(),0);
+                displayWidth,displayHeight,buffer->range_offset(),isinterlaced(trackMeta));
     }
     else{
 

@@ -50,7 +50,9 @@
 #include <media/stagefright/foundation/ALooper.h>
 
 namespace android {
-
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+extern bool isinterlaced(sp<MetaData> meta_track);
+#endif
 static int64_t kLowWaterMarkUs = 2000000ll;  // 2secs
 static int64_t kHighWaterMarkUs = 10000000ll;  // 10secs
 
@@ -1150,11 +1152,20 @@ void AwesomePlayer::setVideoSource(sp<MediaSource> source) {
 }
 
 status_t AwesomePlayer::initVideoDecoder(uint32_t flags) {
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    mVideoSource = OMXCodec::Create(
+            mClient.interface(), mVideoTrack->getFormat(),
+            false, // createEncoder
+            mVideoTrack,
+            NULL,
+            flags |isinterlaced(mVideoTrack->getFormat())?OMXCodec::kPreferInterlacedOutputContent:0);
+#else
     mVideoSource = OMXCodec::Create(
             mClient.interface(), mVideoTrack->getFormat(),
             false, // createEncoder
             mVideoTrack,
             NULL, flags);
+#endif
 
     if (mVideoSource != NULL) {
         int64_t durationUs;
