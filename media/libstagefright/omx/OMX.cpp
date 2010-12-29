@@ -446,6 +446,16 @@ struct SharedVideoRenderer : public VideoRenderer {
         return mObj->render(data, size, platformPrivate);
     }
 
+#ifdef OMAP_ENHANCEMENT
+    virtual Vector< sp<IMemory> > getBuffers() {
+        return mObj->getBuffers();
+    }
+
+    virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) {
+        return mObj->setCallback(cb, cookie);
+    }
+#endif
+
 private:
     void *mLibHandle;
     VideoRenderer *mObj;
@@ -547,6 +557,17 @@ void OMXRenderer::render(IOMX::buffer_id buffer) {
             header->nFilledLen,
             header->pPlatformPrivate);
 }
+
+#ifdef OMAP_ENHANCEMENT
+Vector< sp<IMemory> > OMXRenderer::getBuffers() {
+    return mImpl->getBuffers();
+}
+
+bool OMXRenderer::setCallback(release_rendered_buffer_callback cb, void *cookie) {
+    return mImpl->setCallback(cb, cookie);
+}
+
+#endif
 
 }  // namespace android
 

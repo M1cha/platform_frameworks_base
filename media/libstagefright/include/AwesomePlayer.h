@@ -17,6 +17,9 @@
 #ifndef AWESOME_PLAYER_H_
 
 #define AWESOME_PLAYER_H_
+#ifdef OMAP_ENHANCEMENT
+#include <utils/Vector.h>
+#endif
 
 #include "NuHTTPDataSource.h"
 #include "TimedEventQueue.h"
@@ -45,6 +48,10 @@ struct AwesomeRenderer : public RefBase {
     AwesomeRenderer() {}
 
     virtual void render(MediaBuffer *buffer) = 0;
+#ifdef OMAP_ENHANCEMENT
+    virtual Vector< sp<IMemory> > getBuffers() = 0;
+    virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) {return false;}
+#endif
 
 private:
     AwesomeRenderer(const AwesomeRenderer &);
@@ -94,7 +101,9 @@ struct AwesomePlayer {
 
     void postAudioEOS();
     void postAudioSeekComplete();
-
+#ifdef OMAP_ENHANCEMENT
+    void releaseRenderedBuffer(const sp<IMemory>& mem);
+#endif
 private:
     friend struct AwesomeEvent;
 
@@ -178,6 +187,13 @@ private:
     void postCheckAudioStatusEvent_l();
     status_t play_l();
 
+#ifdef OMAP_ENHANCEMENT
+    Vector<MediaBuffer*> mBuffersWithRenderer;
+    bool mBufferReleaseCallbackSet;
+    bool mIsFirstVideoBuffer;
+    status_t mFirstVideoBufferResult;
+    MediaBuffer *mFirstVideoBuffer;
+#endif
     MediaBuffer *mLastVideoBuffer;
     MediaBuffer *mVideoBuffer;
 

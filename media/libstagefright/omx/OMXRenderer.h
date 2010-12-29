@@ -31,6 +31,10 @@ public:
     virtual ~OMXRenderer();
 
     virtual void render(IOMX::buffer_id buffer);
+#ifdef OMAP_ENHANCEMENT
+    virtual Vector< sp<IMemory> > getBuffers();
+    virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie);
+#endif
 
 private:
     VideoRenderer *mImpl;

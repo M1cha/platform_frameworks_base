@@ -22,6 +22,10 @@
 
 #include <media/stagefright/MediaErrors.h>
 #include <utils/RefBase.h>
+#ifdef OMAP_ENHANCEMENT
+#include <utils/Vector.h>
+#include "binder/IMemory.h"
+#endif
 
 namespace android {
 
@@ -118,6 +122,12 @@ protected:
 private:
     MediaSource(const MediaSource &);
     MediaSource &operator=(const MediaSource &);
+
+public:
+#ifdef OMAP_ENHANCEMENT
+    // Method to share externally allocated buffers with the Codec.
+    virtual void setBuffers(Vector< sp<IMemory> > mBufferAddresses) {}
+#endif
 };
 
 }  // namespace android

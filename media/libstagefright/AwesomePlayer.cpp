@@ -89,6 +89,17 @@ struct AwesomeRemoteRenderer : public AwesomeRenderer {
         }
     }
 
+#ifdef OMAP_ENHANCEMENT
+    virtual Vector< sp<IMemory> > getBuffers(){
+        return mTarget->getBuffers();
+    }
+
+    virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) {
+        return mTarget->setCallback(cb, cookie);
+    }
+
+#endif
+
 private:
     sp<IOMXRenderer> mTarget;
 
@@ -121,6 +132,12 @@ struct AwesomeLocalRenderer : public AwesomeRenderer {
     void render(const void *data, size_t size) {
         mTarget->render(data, size, NULL);
     }
+
+#ifdef OMAP_ENHANCEMENT
+    virtual Vector< sp<IMemory> > getBuffers(){
+        return mTarget->getBuffers();
+    }
+#endif
 
 protected:
     virtual ~AwesomeLocalRenderer() {
@@ -222,6 +239,13 @@ void AwesomeLocalRenderer::init(
     }
 }
 
+#ifdef OMAP_ENHANCEMENT
+static void releaseRenderedBufferCallback(const sp<IMemory>& mem, void *cookie){
+    AwesomePlayer *ap = static_cast<AwesomePlayer *>(cookie);
+    ap->releaseRenderedBuffer(mem);
+}
+#endif
+
 AwesomePlayer::AwesomePlayer()
     : mQueueStarted(false),
       mTimeSource(NULL),
@@ -229,7 +253,14 @@ AwesomePlayer::AwesomePlayer()
       mAudioPlayer(NULL),
       mFlags(0),
       mExtractorFlags(0),
+#ifdef OMAP_ENHANCEMENT
+      mBufferReleaseCallbackSet(false),
+      mIsFirstVideoBuffer(false),
+      mFirstVideoBufferResult(OK),
+      mFirstVideoBuffer(NULL),
+#else
       mLastVideoBuffer(NULL),
+#endif
       mVideoBuffer(NULL),
       mSuspensionState(NULL) {
     CHECK_EQ(mClient.connect(), OK);
@@ -443,10 +474,30 @@ void AwesomePlayer::reset_l() {
 
     mVideoRenderer.clear();
 
+#ifdef OMAP_ENHANCEMENT
+    if (mBuffersWithRenderer.size()) {
+        unsigned int i;
+        unsigned int sz = mBuffersWithRenderer.size();
+
+        for(i = 0; i < sz; i++){
+            mBuffersWithRenderer[i]->release();
+        }
+
+        for(i = 0; i < sz; i++){
+            mBuffersWithRenderer.pop();
+        }
+    }
+    // release reference in case it exists
+    if (mFirstVideoBuffer != NULL) {
+        mFirstVideoBuffer->release();
+        mFirstVideoBuffer = NULL;
+    }
+#else
     if (mLastVideoBuffer) {
         mLastVideoBuffer->release();
         mLastVideoBuffer = NULL;
     }
+#endif
 
     if (mVideoBuffer) {
         mVideoBuffer->release();
@@ -746,6 +797,26 @@ status_t AwesomePlayer::play_l() {
     mFlags |= PLAYING;
     mFlags |= FIRST_FRAME;
 
+#ifdef OMAP_ENHANCEMENT
+    if(mVideoSource != NULL) {
+        CHECK(mFirstVideoBuffer == NULL);
+        mFirstVideoBufferResult = mVideoSource->read(&mFirstVideoBuffer);
+        if (mFirstVideoBufferResult == INFO_FORMAT_CHANGED) {
+            LOGV("First INFO_FORMAT_CHANGED!!!");
+            LOGV("VideoSource signalled format change.");
+            if (mVideoRenderer != NULL) {
+                mVideoRendererIsPreview = false;
+                initRenderer_l();
+            }
+            CHECK(mFirstVideoBuffer == NULL);
+            mFirstVideoBufferResult = OK;
+            mIsFirstVideoBuffer = false;
+        } 
+       else {
+            mIsFirstVideoBuffer = true;
+        }
+}
+#endif
     bool deferredAudioSeek = false;
 
     if (mAudioSource != NULL) {
@@ -764,7 +835,12 @@ status_t AwesomePlayer::play_l() {
                     mAudioPlayer = NULL;
 
                     mFlags &= ~(PLAYING | FIRST_FRAME);
-
+#ifdef OMAP_ENHANCEMENT
+                    if (mFirstVideoBuffer) {
+                        mFirstVideoBuffer->release();
+                        mFirstVideoBuffer = NULL;
+                    }
+#endif
                     return err;
                 }
 
@@ -839,6 +915,12 @@ void AwesomePlayer::initRenderer_l() {
                         decodedWidth, decodedHeight,
                         mVideoWidth, mVideoHeight,
                         rotationDegrees));
+#ifdef OMAP_ENHANCEMENT
+            if (!strncmp("OMX.TI", component, 6)) {
+                mBufferReleaseCallbackSet = mVideoRenderer->setCallback(releaseRenderedBufferCallback, this);
+                mVideoRenderer->setCallback(releaseRenderedBufferCallback, this);
+            }
+#endif
         } else {
             // Other decoders are instantiated locally and as a consequence
             // allocate their buffers in local address space.
@@ -1086,12 +1168,15 @@ status_t AwesomePlayer::initVideoDecoder(uint32_t flags) {
         CHECK(mVideoTrack->getFormat()->findInt32(kKeyWidth, &mVideoWidth));
         CHECK(mVideoTrack->getFormat()->findInt32(kKeyHeight, &mVideoHeight));
 
+#ifndef OMAP_ENHANCEMENT
         status_t err = mVideoSource->start();
 
         if (err != OK) {
             mVideoSource.clear();
             return err;
         }
+#endif
+
     }
 
     return mVideoSource != NULL ? OK : UNKNOWN_ERROR;
@@ -1133,11 +1218,29 @@ void AwesomePlayer::onVideoEvent() {
     mVideoEventPending = false;
 
     if (mSeeking) {
+#ifdef OMAP_ENHANCEMENT
+        if (mBuffersWithRenderer.size()) {
+            unsigned int i;
+            unsigned int sz = mBuffersWithRenderer.size();
+
+            for(i = 0; i < sz; i++){
+                mBuffersWithRenderer[i]->release();
+            }
+
+            for(i = 0; i < sz; i++){
+                mBuffersWithRenderer.pop();
+            }
+        }
+        if (mFirstVideoBuffer) {
+            mFirstVideoBuffer->release();
+            mFirstVideoBuffer = NULL;
+        }
+#else
         if (mLastVideoBuffer) {
             mLastVideoBuffer->release();
             mLastVideoBuffer = NULL;
         }
-
+#endif
         if (mVideoBuffer) {
             mVideoBuffer->release();
             mVideoBuffer = NULL;
@@ -1163,12 +1266,33 @@ void AwesomePlayer::onVideoEvent() {
         MediaSource::ReadOptions options;
         if (mSeeking) {
             LOGV("seeking to %lld us (%.2f secs)", mSeekTimeUs, mSeekTimeUs / 1E6);
-
+#ifdef OMAP_ENHANCEMENT
+            if (mIsFirstVideoBuffer) {
+                if (mFirstVideoBuffer != NULL) {
+                    mFirstVideoBuffer->release();
+                    mFirstVideoBuffer = NULL;
+                }
+                mIsFirstVideoBuffer = false;
+            }
+#endif
             options.setSeekTo(
                     mSeekTimeUs, MediaSource::ReadOptions::SEEK_CLOSEST_SYNC);
         }
         for (;;) {
+#ifdef OMAP_ENHANCEMENT
+            status_t err;
+            if (mIsFirstVideoBuffer) {
+                mVideoBuffer = mFirstVideoBuffer;
+                mFirstVideoBuffer = NULL;
+                err = mFirstVideoBufferResult;
+
+                mIsFirstVideoBuffer = false;
+            } else {
+                err = mVideoSource->read(&mVideoBuffer, &options);
+            }
+#else
             status_t err = mVideoSource->read(&mVideoBuffer, &options);
+#endif
             options.clearSeekTo();
 
             if (err != OK) {
@@ -1243,9 +1367,15 @@ void AwesomePlayer::onVideoEvent() {
         // and we'll play incoming video as fast as we get it.
         latenessUs = 0;
     }
+#ifdef OMAP_ENHANCEMENT
+    LOGV("%s::%d: (latenessUs= %lld) = ((nowUs= %lld) - (timeUs=%lld))", __FUNCTION__, __LINE__, latenessUs, nowUs, timeUs);
 
+    if (latenessUs > 50000) {
+        // We're more than 50ms late.
+#else
     if (latenessUs > 40000) {
         // We're more than 40ms late.
+#endif
         LOGV("we're late by %lld us (%.2f secs)", latenessUs, latenessUs / 1E6);
 
         mVideoBuffer->release();
@@ -1254,10 +1384,15 @@ void AwesomePlayer::onVideoEvent() {
         postVideoEvent_l();
         return;
     }
-
+#ifdef OMAP_ENHANCEMENT
+    if (latenessUs < -100000) {
+        // We're more than 100ms early.
+        LOGV("%s::%d: Frame is early than 100ms: %lld", __FUNCTION__, __LINE__, latenessUs);
+        LOGV("%s::%d: postVideoEvent_l(10000)", __FUNCTION__, __LINE__);
+#else
     if (latenessUs < -10000) {
         // We're more than 10ms early.
-
+#endif
         postVideoEvent_l(10000);
         return;
     }
@@ -1272,11 +1407,20 @@ void AwesomePlayer::onVideoEvent() {
         mVideoRenderer->render(mVideoBuffer);
     }
 
+#ifdef OMAP_ENHANCEMENT
+    if ((!mBufferReleaseCallbackSet)  && (mBuffersWithRenderer.size())){
+        mBuffersWithRenderer[0]->release();
+        mBuffersWithRenderer.pop();
+    }
+    mBuffersWithRenderer.push(mVideoBuffer);
+#else
     if (mLastVideoBuffer) {
         mLastVideoBuffer->release();
         mLastVideoBuffer = NULL;
     }
     mLastVideoBuffer = mVideoBuffer;
+#endif
+
     mVideoBuffer = NULL;
 
     postVideoEvent_l();
@@ -1635,7 +1779,24 @@ void AwesomePlayer::onPrepareAsyncEvent() {
 
     if (mVideoTrack != NULL && mVideoSource == NULL) {
         status_t err = initVideoDecoder();
+#ifdef OMAP_ENHANCEMENT
+            if (err == OK){
+                if (mVideoRendererIsPreview || mVideoRenderer == NULL) {
+                    mVideoRendererIsPreview = false;
+                    initRenderer_l();
+                    if (mVideoRenderer != NULL) {
+                        // Share overlay buffers with video decoder.
+                        mVideoSource->setBuffers(mVideoRenderer->getBuffers());
+                    }
+                }
 
+                err = mVideoSource->start();
+                if (err != OK) {
+                    mVideoSource.clear();
+                    //Subsequent error handling will take of returning.
+                }
+            }
+#endif
         if (err != OK) {
             abortPrepare(err);
             return;
@@ -1696,7 +1857,11 @@ status_t AwesomePlayer::suspend() {
     Mutex::Autolock autoLock(mLock);
 
     if (mSuspensionState != NULL) {
+#ifdef OMAP_ENHANCEMENT
+        if (mBuffersWithRenderer.size() == 0) {
+#else
         if (mLastVideoBuffer == NULL) {
+#endif
             //go into here if video is suspended again
             //after resuming without being played between
             //them
@@ -1731,9 +1896,17 @@ status_t AwesomePlayer::suspend() {
     state->mFlags = mFlags & (PLAYING | AUTO_LOOPING | LOOPING | AT_EOS);
     getPosition(&state->mPositionUs);
 
+#ifdef OMAP_ENHANCEMENT
+#ifdef TARGET_OMAP4
+    if(0) {   //FIXME: This caching of last frame crashes in L27x. Not used anyway, but check why.
+#else
+    if (mBuffersWithRenderer.size()) {
+#endif
+        size_t size = mBuffersWithRenderer[0]->range_length();
+#else
     if (mLastVideoBuffer) {
         size_t size = mLastVideoBuffer->range_length();
-
+#endif
         if (size) {
             int32_t unreadable;
             if (!mLastVideoBuffer->meta_data()->findInt32(
@@ -1741,10 +1914,17 @@ status_t AwesomePlayer::suspend() {
                     || unreadable == 0) {
                 state->mLastVideoFrameSize = size;
                 state->mLastVideoFrame = malloc(size);
-                memcpy(state->mLastVideoFrame,
-                       (const uint8_t *)mLastVideoBuffer->data()
-                            + mLastVideoBuffer->range_offset(),
-                       size);
+#ifdef OMAP_ENHANCEMENT
+            memcpy(state->mLastVideoFrame,
+                   (const uint8_t *)mBuffersWithRenderer[0]->data()
+                        + mBuffersWithRenderer[0]->range_offset(),
+                   size);
+#else
+            memcpy(state->mLastVideoFrame,
+                   (const uint8_t *)mLastVideoBuffer->data()
+                        + mLastVideoBuffer->range_offset(),
+                   size);
+#endif
 
                 state->mVideoWidth = mVideoWidth;
                 state->mVideoHeight = mVideoHeight;
@@ -1840,6 +2020,25 @@ void AwesomePlayer::postAudioEOS() {
 void AwesomePlayer::postAudioSeekComplete() {
     postCheckAudioStatusEvent_l();
 }
+#ifdef OMAP_ENHANCEMENT
+void AwesomePlayer::releaseRenderedBuffer(const sp<IMemory>& mem){
+
+    bool buffer_released = false;
+    unsigned int i = 0;
+
+    for(i = 0; i < mBuffersWithRenderer.size(); i++){
+        if (mBuffersWithRenderer[i]->data() == mem->pointer()){
+            mBuffersWithRenderer[i]->release();
+            mBuffersWithRenderer.removeAt(i);
+            buffer_released = true;
+            break;
+        }
+    }
+
+    if (buffer_released == false)
+        LOGD("Something wrong... Overlay returned wrong buffer address(%p). This message is harmless if you just did a seek.", mem->pointer());
+}
+#endif
 
 }  // namespace android
 

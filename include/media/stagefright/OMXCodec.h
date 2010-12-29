@@ -60,7 +60,9 @@ struct OMXCodec : public MediaSource,
     virtual status_t stop();
 
     virtual sp<MetaData> getFormat();
-
+#ifdef OMAP_ENHANCEMENT
+    virtual void setBuffers(Vector< sp<IMemory> > mBufferAddresses);
+#endif
     virtual status_t read(
             MediaBuffer **buffer, const ReadOptions *options = NULL);
 
@@ -153,6 +155,9 @@ private:
     sp<MemoryDealer> mDealer[2];
 
     State mState;
+#ifdef OMAP_ENHANCEMENT
+    Vector< sp<IMemory> > mExtBufferAddresses;
+#endif
     Vector<BufferInfo> mPortBuffers[2];
     PortStatus mPortStatus[2];
     bool mInitialBufferSubmit;

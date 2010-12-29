@@ -182,11 +182,19 @@ public:
     virtual void onMessage(const omx_message &msg) = 0;
 };
 
+#ifdef OMAP_ENHANCEMENT
+typedef void (*release_rendered_buffer_callback)(const sp<IMemory>& mem, void* cookie);
+#endif
+
 class IOMXRenderer : public IInterface {
 public:
     DECLARE_META_INTERFACE(OMXRenderer);
 
     virtual void render(IOMX::buffer_id buffer) = 0;
+#ifdef OMAP_ENHANCEMENT
+    virtual Vector< sp<IMemory> > getBuffers() = 0;
+    virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) = 0;
+#endif
 };
 
 ////////////////////////////////////////////////////////////////////////////////

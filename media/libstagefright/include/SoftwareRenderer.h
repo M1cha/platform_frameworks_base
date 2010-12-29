@@ -40,6 +40,9 @@ public:
 
     virtual void render(
             const void *data, size_t size, void *platformPrivate);
+#ifdef OMAP_ENHANCEMENT
+    virtual Vector< sp<IMemory> > getBuffers();
+#endif
 
 private:
     OMX_COLOR_FORMATTYPE mColorFormat;

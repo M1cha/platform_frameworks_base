@@ -53,6 +53,61 @@
 #include <OMX_Component.h>
 
 #include "include/ThreadedSource.h"
+#ifdef OMAP_ENHANCEMENT
+#include <overlay_common.h>
+#ifdef TARGET_OMAP4
+#include <cutils/properties.h>
+#include "OMX_TI_Index.h"
+#endif
+
+/**
+* Important Note#
+* Method to calculate the reference frames required for decoder on output port
+* This is as per standard, hence no changes are expected in this function logic in the future
+* But for any changes done inside Codec, it is required to update here as well as in
+* TIHardwareRenderer.cpp (platform/hardware/ti/omap3/libstagefrighthw)
+* And this will be removed once flash backward compatibity issue is resolved.
+*/
+static int Calculate_TotalRefFrames(int nWidth, int nHeight) {
+    LOGD("Calculate_TotalRefFrames");
+    uint32_t ref_frames = 0;
+    uint32_t MaxDpbMbs;
+    uint32_t PicWidthInMbs;
+    uint32_t FrameHeightInMbs;
+
+    MaxDpbMbs = 32768; //Maximum value for upto level 4.1
+
+    PicWidthInMbs = nWidth / 16;
+
+    FrameHeightInMbs = nHeight / 16;
+
+    ref_frames =  (uint32_t)(MaxDpbMbs / (PicWidthInMbs * FrameHeightInMbs));
+
+    LOGD("nWidth [%d] PicWidthInMbs [%d] nHeight [%d] FrameHeightInMbs [%d] ref_frames [%d]",
+          nWidth, PicWidthInMbs, nHeight, FrameHeightInMbs, ref_frames);
+
+    ref_frames = (ref_frames > 16) ? 16 : ref_frames;
+
+    LOGD("Final ref_frames [%d]",  ref_frames);
+
+    return (ref_frames + 3 + 2*NUM_BUFFERS_TO_BE_QUEUED_FOR_OPTIMAL_PERFORMANCE);
+}
+#if defined NPA_BUFFERS
+#define OMX_BUFFERHEADERFLAG_MODIFIED 0x00000100
+#define OMX_TI_IndexParamBufferPreAnnouncement 0x7F000055
+#define THUMBNAIL_BUFFERS_NPA_MODE 2
+#define NPA_BUFFER_SIZE 4
+typedef struct OMX_TI_PARAM_BUFFERPREANNOUNCE
+{
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bEnabled;
+}OMX_TI_PARAM_BUFFERPREANNOUNCE;
+
+#endif
+
+#endif
 
 namespace android {
 
@@ -1530,7 +1585,7 @@ status_t OMXCodec::setVideoOutputFormat(
     if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
 
         //Calculate the buffer count to take display optimal buffer count into account
-        def.nBufferCountActual = 20;
+        def.nBufferCountActual = Calculate_TotalRefFrames(width, height);
 
         //update nStride - a strict requirement in 1.16 Ducati rls. Also Thumbnail is 1D buffer.
         //Also in case of Stage fright command line tests 1D output buffer is used when we
@@ -1781,15 +1836,59 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
             portIndex == kPortIndexInput ? "input" : "output");
 
     size_t totalSize = def.nBufferCountActual * def.nBufferSize;
+#ifdef OMAP_ENHANCEMENT
+    bool useExternallyAllocatedBuffers = false;
+
+    if ((!strcmp(mComponentName, "OMX.TI.Video.Decoder") ||
+         !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER") ||
+         !strcmp(mComponentName, "OMX.TI.720P.Decoder")) &&
+        (portIndex == kPortIndexOutput) &&
+        (mExtBufferAddresses.size() == def.nBufferCountActual)
+#if defined(TARGET_OMAP4)
+        && !(mQuirks & OMXCodec::kThumbnailMode)
+#endif
+        ){
+
+        // One must use overlay buffers for TI video decoder output port.
+        // So, do not allocate memory here.
+        useExternallyAllocatedBuffers = true;
+    }
+    else{
+        mDealer[portIndex] = new MemoryDealer(totalSize, "OMXCodec");
+    }
+
+    sp<IMemory> mem;
+#else
     mDealer[portIndex] = new MemoryDealer(totalSize, "OMXCodec");
+#endif
 
     for (OMX_U32 i = 0; i < def.nBufferCountActual; ++i) {
+#ifdef OMAP_ENHANCEMENT
+        if (useExternallyAllocatedBuffers){
+            mem = mExtBufferAddresses[i];
+        }
+        else{
+            mem = mDealer[portIndex]->allocate(def.nBufferSize);
+        }
+#else
         sp<IMemory> mem = mDealer[portIndex]->allocate(def.nBufferSize);
+#endif
         CHECK(mem.get() != NULL);
 
         BufferInfo info;
         info.mData = NULL;
         info.mSize = def.nBufferSize;
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+        //Update Output buffers range as per 2D buffer requirement.
+        //Doubling size to contain (nFilledLen + nOffset) check. Extra range is harmless here.
+        if (!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")){
+            if(useExternallyAllocatedBuffers)
+            {
+                OMX_VIDEO_PORTDEFINITIONTYPE *videoDef = &def.format.video;
+                info.mSize = ARM_4K_PAGE_SIZE * videoDef->nFrameHeight * 2;
+            }
+        }
+#endif
 
         IOMX::buffer_id buffer;
         if (portIndex == kPortIndexInput
@@ -3215,6 +3314,12 @@ sp<MetaData> OMXCodec::getFormat() {
 
     return mOutputFormat;
 }
+
+#ifdef OMAP_ENHANCEMENT
+void OMXCodec::setBuffers(Vector< sp<IMemory> > mBufferAddresses){
+    mExtBufferAddresses = mBufferAddresses;
+}
+#endif
 
 status_t OMXCodec::read(
         MediaBuffer **buffer, const ReadOptions *options) {

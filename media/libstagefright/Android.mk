@@ -2,7 +2,9 @@ LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
 include frameworks/base/media/libstagefright/codecs/common/Config.mk
-
+ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+LOCAL_CFLAGS += -DTARGET_OMAP4 -DARM_4K_PAGE_SIZE=4096
+endif
 LOCAL_SRC_FILES:=                         \
         AMRExtractor.cpp                  \
         AMRWriter.cpp                     \
@@ -50,6 +52,12 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/external/tremolo \
         $(TOP)/frameworks/base/media/libstagefright/rtsp
 
+ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+LOCAL_C_INCLUDES += hardware/ti/omx/ducati/domx/system/omx_core/inc
+endif
+ifeq ($(OMAP_ENHANCEMENT),true)
+LOCAL_C_INCLUDES += $(TOP)/hardware/ti/omap3/liboverlay
+endif
 LOCAL_SHARED_LIBRARIES := \
         libbinder         \
         libmedia          \
