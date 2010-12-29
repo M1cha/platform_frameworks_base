@@ -45,7 +45,10 @@ LOCAL_SRC_FILES:=                         \
         WAVExtractor.cpp                  \
         avc_utils.cpp                     \
         string.cpp
-
+ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+LOCAL_SRC_FILES +=               \
+        TIVideoConfigParser.cpp
+endif
 LOCAL_C_INCLUDES:= \
 	$(JNI_H_INCLUDE) \
         $(TOP)/frameworks/base/include/media/stagefright/openmax \

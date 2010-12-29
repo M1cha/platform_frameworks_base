@@ -250,7 +250,7 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
                 (const uint8_t *)buffer->data() + buffer->range_offset(),
                 0, //1D buffer in 1.16 Ducati rls. If 2D buffer -> 4096 stride should be used
                 frame->mData, displayWidth * 2,
-                displayWidth,displayHeight,buffer->range_offset(),isinterlaced(trackMeta));
+                displayWidth,displayHeight,buffer->range_offset(),0);
     }
     else{
 
