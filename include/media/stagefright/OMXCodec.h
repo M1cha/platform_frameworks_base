@@ -38,6 +38,12 @@ struct OMXCodec : public MediaSource,
         // The client wants to access the output buffer's video
         // data for example for thumbnail extraction.
         kClientNeedsFramebuffer  = 4,
+#ifdef OMAP_ENHANCEMENT
+        kPreferThumbnailMode               = 0x8,
+        kPreferAllocateBufferOnOutputPorts = 0x10,
+        kPreferInterlacedOutputContent     = 0x20,
+        MAX_RESOLUTION = 414720, // video resolution for TI Vid Dec
+#endif
     };
     static sp<MediaSource> Create(
             const sp<IOMX> &omx,
@@ -110,6 +116,12 @@ private:
         kRequiresLargerEncoderOutputBuffer    = 4096,
         kOutputBuffersAreUnreadable           = 8192,
         kStoreMetaDataInInputVideoBuffers     = 16384,
+#ifdef OMAP_ENHANCEMENT
+        kDecoderNeedsPortReconfiguration      = 32768,
+        kDecoderCantRenderSmallClips          = 65536,
+        kInterlacedOutputContent              = 131072,
+        kThumbnailMode                        = 262144,
+#endif
     };
 
     struct BufferInfo {
@@ -255,10 +267,12 @@ private:
     void dumpPortStatus(OMX_U32 portIndex);
 
     status_t configureCodec(const sp<MetaData> &meta, uint32_t flags);
-
+#ifdef OMAP_ENHANCEMENT
+    static uint32_t getComponentQuirks(const char *componentName, bool isEncoder, uint32_t flags = 0);
+#else
     static uint32_t getComponentQuirks(
             const char *componentName, bool isEncoder);
-
+#endif
     static void findMatchingCodecs(
             const char *mime,
             bool createEncoder, const char *matchComponentName,
