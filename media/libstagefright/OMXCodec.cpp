@@ -331,6 +331,15 @@ static const CodecInfo kEncoderInfo[] = {
 #define CODEC_LOGV(x, ...) LOGV("[%s] "x, mComponentName, ##__VA_ARGS__)
 #define CODEC_LOGE(x, ...) LOGE("[%s] "x, mComponentName, ##__VA_ARGS__)
 
+#ifdef OMAP_ENHANCEMENT
+/* This flag has to be updated according to the Memory dealer cache line
+ * alignment value "SimpleBestFitAllocator::kMemoryAlign"
+ * It is required to allocate correct amount of memory considering the
+ * alignment, Otherwise alloc fails when input buffer sizes are not aligned*/
+#define CACHELINE_BOUNDARY_MEMALIGNMENT 32
+#endif
+
+
 struct OMXCodecObserver : public BnOMXObserver {
     OMXCodecObserver() {
     }
@@ -916,6 +925,17 @@ void OMXCodec::setMinBufferSize(OMX_U32 portIndex, OMX_U32 size) {
         || (def.nBufferSize < size)) {
         def.nBufferSize = size;
     }
+
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    /* Aligning the buffer size as observed memory failures in allocateBuffersOnPort
+     * for input port incase buffer sizes are not Cache line boundary aligned.
+     * Actually the Memory Dealer allocates a large chunk for the Total buffer size.
+     * While requesting individual buffers, it provides chunks (offset) from the large
+     * memory. During this, it provides address based on Cache line boundary. Hence
+     * there would not be sufficient memory for the last chunk and it fails */
+    def.nBufferSize = ((def.nBufferSize + CACHELINE_BOUNDARY_MEMALIGNMENT - 1) &
+                        ~(CACHELINE_BOUNDARY_MEMALIGNMENT - 1));
+#endif
 
     err = mOMX->setParameter(
             mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
