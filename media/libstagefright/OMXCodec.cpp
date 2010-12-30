@@ -35,6 +35,10 @@
 
 #include "include/ESDS.h"
 
+#if defined(OMAP_ENHANCEMENT) && (TARGET_OMAP4)
+#define NPA_BUFFERS
+#endif
+
 #include <binder/IServiceManager.h>
 #include <binder/MemoryDealer.h>
 #include <binder/ProcessState.h>
@@ -1682,6 +1686,31 @@ status_t OMXCodec::setVideoOutputFormat(
             err = mOMX->setParameter(
                     mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
             CHECK_EQ(err, OK);
+
+#if defined (NPA_BUFFERS)
+            CODEC_LOGV("Setting up the non-pre-annoucement mode");
+            OMX_TI_PARAM_BUFFERPREANNOUNCE PreAnnouncement;
+            InitOMXParams(&PreAnnouncement);
+            PreAnnouncement.nPortIndex = def.nPortIndex;
+            err = mOMX->getParameter(
+                    mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamBufferPreAnnouncement, &PreAnnouncement, sizeof(PreAnnouncement));
+               if (err != OMX_ErrorNone)
+            {
+                CODEC_LOGE("get OMX_TI_IndexParamBufferPreAnnouncement err : %x",err);
+            }
+
+            //Set the pre-annoucement to be false. i.e we will provide the buffer when we get it from camera.
+            PreAnnouncement.bEnabled = OMX_FALSE;
+            err = mOMX->setParameter(
+                    mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamBufferPreAnnouncement, &PreAnnouncement, sizeof(PreAnnouncement));
+            if (err != OMX_ErrorNone)
+            {
+                CODEC_LOGE("set OMX_TI_IndexParamBufferPreAnnouncement err : %x",err);
+            }
+
+            mNumberOfNPABuffersSent = 0;
+#endif
+
         }
    }
 #endif
@@ -1874,6 +1903,15 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
             portIndex == kPortIndexInput ? "input" : "output");
 
     size_t totalSize = def.nBufferCountActual * def.nBufferSize;
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4) && defined (NPA_BUFFERS)
+            if( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER") &&
+                (mQuirks & OMXCodec::kThumbnailMode) &&
+                (portIndex == kPortIndexOutput)){
+            totalSize = (THUMBNAIL_BUFFERS_NPA_MODE * def.nBufferSize)
+                        + ((def.nBufferCountActual - THUMBNAIL_BUFFERS_NPA_MODE) * NPA_BUFFER_SIZE);
+            }
+#endif
+
 #ifdef OMAP_ENHANCEMENT
     bool useExternallyAllocatedBuffers = false;
 
@@ -1906,6 +1944,15 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
             mem = mExtBufferAddresses[i];
         }
         else{
+
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4) && defined (NPA_BUFFERS)
+            if( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER") &&
+                (mQuirks & OMXCodec::kThumbnailMode) &&
+                (portIndex == kPortIndexOutput) &&
+                (i>=THUMBNAIL_BUFFERS_NPA_MODE))
+                mem = mDealer[portIndex]->allocate(NPA_BUFFER_SIZE);
+            else
+#endif
             mem = mDealer[portIndex]->allocate(def.nBufferSize);
         }
 #else
@@ -2640,6 +2687,14 @@ void OMXCodec::fillOutputBuffers() {
     for (size_t i = 0; i < buffers->size(); ++i) {
 #if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
         if (!(*buffers)[i].mOwnedByComponent) {
+
+#if defined (NPA_BUFFERS)
+        if( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER") &&
+            (mQuirks & OMXCodec::kThumbnailMode) ){
+            if(mNumberOfNPABuffersSent++ >= THUMBNAIL_BUFFERS_NPA_MODE)
+                return;
+        }
+#endif
             fillOutputBuffer(&buffers->editItemAt(i));
         }
 #else
@@ -2831,6 +2886,13 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
     }
 
     OMX_U32 flags = OMX_BUFFERFLAG_ENDOFFRAME;
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4) && defined (NPA_BUFFERS)
+    if(mQuirks & OMXCodec::kThumbnailMode)
+    {
+        CODEC_LOGV("Sending eos flag");
+        flags |= OMX_BUFFERFLAG_EOS;
+    }
+#endif
 
     if (signalEOS) {
         flags |= OMX_BUFFERFLAG_EOS;

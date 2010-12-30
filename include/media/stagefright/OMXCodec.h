@@ -286,6 +286,10 @@ private:
 
     OMXCodec(const OMXCodec &);
     OMXCodec &operator=(const OMXCodec &);
+
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4) && defined (NPA_BUFFERS)
+    uint32_t mNumberOfNPABuffersSent;
+#endif
 };
 
 struct CodecProfileLevel {
