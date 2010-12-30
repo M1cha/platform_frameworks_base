@@ -938,6 +938,21 @@ status_t MPEG4Extractor::parseChunk(off_t *offset, int depth) {
             break;
         }
 
+#ifdef OMAP_ENHANCEMENT
+        case FOURCC('c', 't', 't', 's'):
+        {
+            status_t err =
+                mLastTrack->sampleTable->setTimeToSampleParamsCtts(
+                        data_offset, chunk_data_size);
+
+            if (err != OK) {
+                return err;
+            }
+
+            *offset += chunk_size;
+            break;
+        }
+#endif
         case FOURCC('s', 't', 't', 's'):
         {
             status_t err =
@@ -1849,6 +1864,11 @@ status_t MPEG4Source::read(
         CHECK(mBuffer != NULL);
         mBuffer->set_range(0, dstOffset);
         mBuffer->meta_data()->clear();
+#ifdef OMAP_ENHANCEMENT
+        if(mSampleTable->mTimeToSampleCtts)
+            dts = dts + mSampleTable->mTimeToSampleCtts[mCurrentSampleIndex];
+#endif
+
         mBuffer->meta_data()->setInt64(
                 kKeyTime, ((int64_t)dts * 1000000) / mTimescale);
 
