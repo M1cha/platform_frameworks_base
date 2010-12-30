@@ -879,7 +879,19 @@ status_t AwesomePlayer::play_l() {
                 mWatchForAudioEOS = true;
             }
         } else {
+#ifdef OMAP_ENHANCEMENT
+            if (!mSeeking || mVideoSource == NULL) {
+               // Resume when video is not present or when
+               // not seeking
+                mAudioPlayer->resume();
+            } else {
+                // when seeking it is too early to resume
+                // as audio has not seek yet
+                mFlags |= HOLD_TO_RESUME;
+            }
+#else
             mAudioPlayer->resume();
+#endif
         }
     }
 
@@ -1171,10 +1183,37 @@ status_t AwesomePlayer::initAudioDecoder() {
     if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW)) {
         mAudioSource = mAudioTrack;
     } else {
+#ifdef OMAP_ENHANCEMENT
+        if (mVideoWidth*mVideoHeight > MAX_RESOLUTION) {
+         // video is launched first, so these capablities are known
+         // audio can be selected accordingly
+         // TODO: extend this to a method that can include more
+         // capabilities to evaluate
+
+#ifdef TARGET_OMAP4
+            //for OMAP4 720p,1080p videos, lets stick to OMX.PV audio codecs
+            mAudioSource = OMXCodec::Create(
+                    mClient.interface(), mAudioTrack->getFormat(),
+                    false, // createEncoder
+                    mAudioTrack);
+#else
+            mAudioSource = OMXCodec::Create(
+                    mClient.interface(), mAudioTrack->getFormat(),
+                    false, // createEncoder
+                    mAudioTrack, "OMX.ITTIAM.AAC.decode");
+#endif
+        } else {
+            mAudioSource = OMXCodec::Create(
+                    mClient.interface(), mAudioTrack->getFormat(),
+                    false, // createEncoder
+                    mAudioTrack);
+        }
+#else
         mAudioSource = OMXCodec::Create(
                 mClient.interface(), mAudioTrack->getFormat(),
                 false, // createEncoder
                 mAudioTrack);
+#endif
     }
 
     if (mAudioSource != NULL) {

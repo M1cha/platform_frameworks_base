@@ -785,6 +785,153 @@ status_t MPEG4Extractor::parseChunk(off_t *offset, int depth) {
         case FOURCC('m', 'p', '4', 'a'):
         case FOURCC('s', 'a', 'm', 'r'):
         case FOURCC('s', 'a', 'w', 'b'):
+#ifdef OMAP_ENHANCEMENT
+        {
+            // This pointer will hold the address of a buffer with the
+            // data content inside the mp4a, samr or sawb atoms.
+
+            uint8_t *buffer;
+
+            // Allocate buffer content
+
+            if (!(buffer = (uint8_t *)malloc(chunk_size))){
+                LOGD("Error allocating memory\n");
+                *offset += chunk_size;
+                return ERROR_OUT_OF_MEM;
+            }
+            // Fill out the buffer with the data
+
+            if (mDataSource->readAt(
+                        data_offset, buffer, chunk_size) < (ssize_t) chunk_size) {
+                free(buffer);
+                return ERROR_IO;
+            }
+            uint16_t data_ref_index = 0;
+            uint16_t num_channels = 0;
+            uint16_t sample_size = 0;
+            uint32_t sample_rate = 0;
+            if (chunk_size >= 25){
+                data_ref_index = U16_AT(&buffer[6]);
+                num_channels = U16_AT(&buffer[16]);
+
+                sample_size = U16_AT(&buffer[18]);
+                sample_rate = U32_AT(&buffer[24]) >> 16;
+            }
+
+            if (!strcasecmp(MEDIA_MIMETYPE_AUDIO_AMR_NB,
+                            FourCC2MIME(chunk_type))) {
+                // AMR NB audio is always mono, 8kHz
+                num_channels = 1;
+                sample_rate = 8000;
+            } else if (!strcasecmp(MEDIA_MIMETYPE_AUDIO_AMR_WB,
+                               FourCC2MIME(chunk_type))) {
+                // AMR WB audio is always mono, 16kHz
+                num_channels = 1;
+                sample_rate = 16000;
+            }
+
+            LOGV("*** coding='%s' %d channels, size %d, rate %d\n",
+                   chunk, num_channels, sample_size, sample_rate);
+
+            mLastTrack->meta->setCString(kKeyMIMEType, FourCC2MIME(chunk_type));
+            mLastTrack->meta->setInt32(kKeyChannelCount, num_channels);
+            mLastTrack->meta->setInt32(kKeySampleRate, sample_rate);
+
+            // The following section of code is like a parser that
+            // replaces the complete processing of the atoms mp4a, samr,
+            // and sawb.
+            // For each case, ideally there should be different parsers,
+            // but all should yield to the position of the esds atom.
+            // A search for a string is implemented (something like
+            // strstr but for chains that can have '\0' chars in the
+            // stream)
+            // In fact the code below is a modification of strstr
+
+
+            //s will store the position of the esds atom
+            uint8_t * s = (uint8_t *)buffer;
+            {
+                char c, sc;
+                // This is a modification of strstr; since
+                // '\0' is allowed, the stop logic will work
+                // by knowing the size of the array (instead of looking
+                // for '/0')
+
+                unsigned int count = 0;
+                // This is the tag that needs to be found.
+
+                const char * find = "esds";
+                c = *find++;
+                do {
+                    do {
+                        sc = *s++;
+                        count++;
+                    } while (sc != c && count < POS_ESDS_CANT_BE_FOUND(chunk_size));
+                } while ((memcmp(s, find, 3)) && count < POS_ESDS_CANT_BE_FOUND(chunk_size));
+                s--;
+            }
+
+            // The stop offset indicates the place where the current
+            // atom should end.
+
+            off_t stop_offset = *offset + chunk_size;
+            // Check if the parsing succeeded or not. If it didn't,
+            // there is still chance to properly play the file so no
+            // error will be reported, yet.
+
+            if (s==buffer + POS_ESDS_CANT_BE_FOUND(chunk_size)
+                || !(s-buffer)){
+                LOGD("esds not found continue parsing next atoms\n");
+                *offset = stop_offset;
+                free(buffer);
+                break;
+            }
+
+            // esds atom was found. Set the offset to the place where
+            // the atom was found, and rewind 4 bytes in order to seek
+            // from the place the atom's size is found.
+
+            *offset = data_offset + (s - buffer) - 4;
+
+            // Information found or not found, there is no need for
+            // the buffer anymore.
+
+            free(buffer);
+
+            // Parse esds atom
+
+            while (*offset < stop_offset) {
+                status_t err = parseChunk(offset, depth + 1);
+                if (err != OK) {
+                    // If the esds atom couldn't be parsed, then try to
+                    // continue parsing the other atoms and use the
+                    // default values.
+
+                    LOGD("Malformed\n");
+                    LOGD("Error while parsing audio metadata, should use default settings\n");
+                }
+            }
+
+            // This error will not be forgiven since this indicates
+            // the esds parser jumped above the size of the atom and
+            // attempted to read more information than what was
+            // contained in esds. (Case when the parser reads all the
+            // info and expects to find more, but it can't)
+            // However, if the offset is smaller, then the esds parser
+            // wasn't able to complete its parsing, this could be due
+            // to the fact it couldn't recognize a pattern in the esds
+            // atom; This indicates that some information could have
+            // been extracted from the esds, but not all and this parser
+            // will attempt to continue launching the application with
+            // the collected information (which may not be complete).
+
+            if (*offset > stop_offset) {
+                return ERROR_MALFORMED;
+            }
+
+            break;
+        }
+#else
         {
             uint8_t buffer[8 + 20];
             if (chunk_data_size < (ssize_t)sizeof(buffer)) {
@@ -838,7 +985,7 @@ status_t MPEG4Extractor::parseChunk(off_t *offset, int depth) {
             }
             break;
         }
-
+#endif
         case FOURCC('m', 'p', '4', 'v'):
         case FOURCC('s', '2', '6', '3'):
 #ifdef OMAP_ENHANCEMENT
@@ -1134,6 +1281,20 @@ status_t MPEG4Extractor::parseChunk(off_t *offset, int depth) {
             *offset += chunk_size;
             break;
         }
+
+#ifdef OMAP_ENHANCEMENT
+        case FOURCC('d', 'a', 'm', 'r'):
+        {
+             // validate chunk size of damr ATOM
+             if((chunk_data_size > 9)||(chunk_data_size < 0)){
+                 LOGV(" Chunk data size is INVALID ");
+                 return ERROR_MALFORMED;
+             }
+
+             *offset += chunk_size;
+             break;
+        }
+#endif
 
         default:
         {

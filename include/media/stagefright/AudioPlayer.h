@@ -51,7 +51,9 @@ public:
 
     void pause(bool playPendingSamples = false);
     void resume();
-
+#ifdef OMAP_ENHANCEMENT
+    void flush();
+#endif
     // Returns the timestamp of the last buffer played (in us).
     int64_t getMediaTimeUs();
 

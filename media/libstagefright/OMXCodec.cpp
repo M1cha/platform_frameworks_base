@@ -492,12 +492,27 @@ uint32_t OMXCodec::getComponentQuirks(
     if (!strcmp(componentName, "OMX.TI.MP3.decode")) {
         quirks |= kNeedsFlushBeforeDisable;
         quirks |= kDecoderLiesAboutNumberOfChannels;
+#ifdef OMAP_ENHANCEMENT
+        quirks |= kSupportsMultipleFramesPerInputBuffer;
+        quirks |= kDecoderCantRenderSmallClips;
+#endif
     }
     if (!strcmp(componentName, "OMX.TI.AAC.decode")) {
         quirks |= kNeedsFlushBeforeDisable;
         quirks |= kRequiresFlushCompleteEmulation;
         quirks |= kSupportsMultipleFramesPerInputBuffer;
     }
+#ifdef OMAP_ENHANCEMENT
+    if (!strcmp(componentName, "OMX.ITTIAM.AAC.decode")) {
+
+        quirks |= kNeedsFlushBeforeDisable;
+        quirks |= kDecoderNeedsPortReconfiguration;
+    }
+    if (!strcmp(componentName, "OMX.PV.aacdec")) {
+        quirks |= kNeedsFlushBeforeDisable;
+        quirks |= kDecoderNeedsPortReconfiguration;
+    }
+#endif
     if (!strncmp(componentName, "OMX.qcom.video.encoder.", 23)) {
         quirks |= kRequiresLoadedToIdleAfterAllocation;
         quirks |= kRequiresAllocateBufferOnInputPorts;
@@ -832,6 +847,20 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
                 LOGE("Profile and/or level exceed the decoder's capabilities.");
                 return ERROR_UNSUPPORTED;
             }
+   #ifdef OMAP_ENHANCEMENT
+        int32_t width, height;
+        bool success = meta->findInt32(kKeyWidth, &width);
+        success = success && meta->findInt32(kKeyHeight, &height);
+        CHECK(success);
+        if (!strcmp(mComponentName, "OMX.TI.720P.Decoder")
+            && (profile == kAVCProfileBaseline && level <= 39)
+            && (width*height < MAX_RESOLUTION)) {
+            // Though this decoder can handle this profile/level,
+            // we prefer to use "OMX.TI.Video.Decoder" for
+            // Baseline Profile with level <=39 and sub 720p
+            return ERROR_UNSUPPORTED;
+            }
+#endif
         }
     }
 
@@ -851,6 +880,28 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
         CHECK(meta->findInt32(kKeySampleRate, &sampleRate));
 
         setAACFormat(numChannels, sampleRate, bitRate);
+   #ifdef OMAP_ENHANCEMENT
+        // Configure TI OMX component to FrameMode for AAC-ADTS
+        if (!strcmp(mComponentName, "OMX.TI.AAC.decode")) {
+            OMX_INDEXTYPE index;
+
+            CODEC_LOGV("OMXCodec::configureCodec() TI AAC - Configure Component to FrameMode");
+
+            // Get Extension Index from Component
+            status_t err = mOMX->getExtensionIndex(mNode, "OMX.TI.index.config.AacDecFrameModeInfo", &index);
+            if (err != OK) {
+                CODEC_LOGV("OMXCodec::configureCodec() TI AAC - Problem getting ExtensionIndex - Use SteamMode");
+            }
+            else {
+                OMX_U16 framemode = 1;
+                // Set FrameMode for ADTS streams
+                err = mOMX->setConfig(mNode, index, &framemode, sizeof(framemode));
+                if (err != OK) {
+                    CODEC_LOGV("OMXCodec::configureCodec() TI AAC - Problem configuring FrameMode - Use SteamMode");
+                }
+            }
+        }
+#endif
     }
 
     if (!strncasecmp(mMIME, "video/", 6)) {
@@ -2837,6 +2888,17 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
         }
 
         if (err != OK) {
+#ifdef OMAP_ENHANCEMENT
+            if(mQuirks & kDecoderCantRenderSmallClips &&
+               err == ERROR_END_OF_STREAM){
+                static char mBufferAfterEos = 0;
+                if(!mBufferAfterEos){
+                    mBufferAfterEos = 1;
+                    break;
+                }
+                mBufferAfterEos = 0;
+            }
+#endif
             signalEOS = true;
             mFinalStatus = err;
             mSignalledEOS = true;
@@ -3984,9 +4046,26 @@ void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
                         (mQuirks & kDecoderLiesAboutNumberOfChannels)
                             ? numChannels : params.nChannels);
 
+#ifndef OMAP_ENHANCEMENT
                 // The codec-reported sampleRate is not reliable...
                 mOutputFormat->setInt32(kKeySampleRate, sampleRate);
-
+#else
+                if ((OMX_U32)sampleRate != params.nSamplingRate) {
+                    LOGW("Codec outputs a different number of samplerate than "
+                            "the input stream contains (contains %d samplerate, "
+                            "codec outputs %ld samplerate).",
+                            sampleRate, params.nSamplingRate);
+                    mOutputFormat->setInt32(
+                            kKeySampleRate,
+                            (mQuirks & kDecoderNeedsPortReconfiguration)
+                            ? params.nSamplingRate : sampleRate);
+                }
+                else
+                {
+                  // The codec-reported sampleRate is not reliable...
+                    mOutputFormat->setInt32(kKeySampleRate, sampleRate);
+                }
+#endif
             } else if (audio_def->eEncoding == OMX_AUDIO_CodingAMR) {
                 OMX_AUDIO_PARAM_AMRTYPE amr;
                 InitOMXParams(&amr);

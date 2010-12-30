@@ -127,6 +127,11 @@ private:
     };
 
 #ifdef OMAP_ENHANCEMENT
+    enum {
+        HOLD_TO_RESUME      = 128,
+        MAX_RESOLUTION      = 414720, // 864x480(WVGA) - 720x576(D1-PAL)
+    };
+
 #if defined(TARGET_OMAP4)
     S3D_params mS3Dparams;
 #endif

@@ -26,7 +26,9 @@
 #include <media/stagefright/MediaErrors.h>
 #include <media/stagefright/MediaSource.h>
 #include <media/stagefright/MetaData.h>
-
+#ifdef OMAP_ENHANCEMENT
+#include <media/stagefright/MediaErrors.h>
+#endif
 #include "include/AwesomePlayer.h"
 
 namespace android {
@@ -182,7 +184,17 @@ void AudioPlayer::pause(bool playPendingSamples) {
         }
     }
 }
+#ifdef OMAP_ENHANCEMENT
+void AudioPlayer::flush() {
+    CHECK(mStarted);
 
+    if (mAudioSink.get() != NULL) {
+        mAudioSink->flush();
+    } else {
+        mAudioTrack->flush();
+    }
+}
+#endif
 void AudioPlayer::resume() {
     CHECK(mStarted);
 
