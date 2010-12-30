@@ -454,6 +454,10 @@ struct SharedVideoRenderer : public VideoRenderer {
     virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) {
         return mObj->setCallback(cb, cookie);
     }
+
+    virtual void resizeRenderer(uint32_t width, uint32_t height) {
+          mObj->resizeRenderer(width, height);
+    }
 #endif
 
 private:
@@ -567,6 +571,9 @@ bool OMXRenderer::setCallback(release_rendered_buffer_callback cb, void *cookie)
     return mImpl->setCallback(cb, cookie);
 }
 
+void OMXRenderer::resizeRenderer(uint32_t width, uint32_t height) {
+    mImpl->resizeRenderer(width, height);
+}
 #endif
 
 }  // namespace android

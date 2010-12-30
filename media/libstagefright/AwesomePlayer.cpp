@@ -100,6 +100,10 @@ struct AwesomeRemoteRenderer : public AwesomeRenderer {
         return mTarget->setCallback(cb, cookie);
     }
 
+    virtual void resizeRenderer(uint32_t width, uint32_t height) {
+        mTarget->resizeRenderer(width, height);
+    }
+
 #endif
 
 private:
@@ -138,6 +142,9 @@ struct AwesomeLocalRenderer : public AwesomeRenderer {
 #ifdef OMAP_ENHANCEMENT
     virtual Vector< sp<IMemory> > getBuffers(){
         return mTarget->getBuffers();
+    }
+    virtual void resizeRenderer(uint32_t width, uint32_t height) {
+        mTarget->resizeRenderer(width, height);
     }
 #endif
 
@@ -893,7 +900,17 @@ void AwesomePlayer::initRenderer_l() {
         CHECK(meta->findCString(kKeyDecoderComponent, &component));
         CHECK(meta->findInt32(kKeyWidth, &decodedWidth));
         CHECK(meta->findInt32(kKeyHeight, &decodedHeight));
-
+#ifdef OMAP_ENHANCEMENT
+        if (mVideoRenderer != NULL) {
+            //we cant destroy overlay based renderer here,as the overlay has 2 handles
+            //(1) from media server process (the current process)
+            //(2) from surface flinger process.
+            // Hence, we have to resize the renderer for new dimensions than dstroying and 
+            // re-creating
+            mVideoRenderer->resizeRenderer(decodedWidth, decodedHeight);
+            return;
+        }
+#endif
         int32_t rotationDegrees;
         if (!mVideoTrack->getFormat()->findInt32(
                     kKeyRotation, &rotationDegrees)) {

@@ -42,6 +42,7 @@ public:
             const void *data, size_t size, void *platformPrivate);
 #ifdef OMAP_ENHANCEMENT
     virtual Vector< sp<IMemory> > getBuffers();
+    virtual void resizeRenderer(uint32_t width, uint32_t height) {}
 #endif
 
 private:

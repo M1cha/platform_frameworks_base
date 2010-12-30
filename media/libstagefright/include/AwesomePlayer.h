@@ -51,6 +51,7 @@ struct AwesomeRenderer : public RefBase {
 #ifdef OMAP_ENHANCEMENT
     virtual Vector< sp<IMemory> > getBuffers() = 0;
     virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) {return false;}
+    virtual void resizeRenderer(uint32_t width, uint32_t height) = 0;
 #endif
 
 private:
