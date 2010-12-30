@@ -680,6 +680,16 @@ void LayerBuffer::OverlaySource::onVisibilityResolved(
                         Transform(mOrientation));
                 overlay_dev->setParameter(overlay_dev, mOverlay,
                         OVERLAY_TRANSFORM, finalTransform.getOrientation());
+                //get the current state of the layer: to commit the latest parameters
+                State& layerSt = mLayer.currentState();
+                overlay_dev->setParameter(overlay_dev, mOverlay,
+                        OVERLAY_COLOR_KEY, 0x00);
+                overlay_dev->setParameter(overlay_dev, mOverlay,
+                        OVERLAY_PLANE_ALPHA, layerSt.alpha);
+                overlay_dev->setParameter(overlay_dev, mOverlay,
+                        OVERLAY_PLANE_Z_ORDER, layerSt.z);
+                overlay_dev->setParameter(overlay_dev, mOverlay,
+                OVERLAY_SET_SCREEN_ID, mLayer.dpy);
                 overlay_dev->commit(overlay_dev, mOverlay);
             }
         }
