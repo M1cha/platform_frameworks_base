@@ -628,6 +628,31 @@ void OMXCodec::findMatchingCodecs(
         matchingCodecs->push(String8(componentName));
     }
 
+#ifdef OMAP_ENHANCEMENT
+#ifdef TARGET_OMAP4
+    char value[PROPERTY_VALUE_MAX];
+    property_get("debug.video.preferswcodec", value, "0");
+    if (atoi(value))
+    {
+        flags |= kPreferSoftwareCodecs;
+    }
+    else
+    {
+        /* For thumbnail mode, SW codec is preferred but in case of
+        * HD clips, the SW codec fails and retry with Ducati codec
+        * is also not done. Hence resetting the flags to use Ducati
+        * codec for MPEG4/H263/H264 */
+        if ((flags & kPreferThumbnailMode) &&
+            (!strcasecmp(mime, MEDIA_MIMETYPE_VIDEO_MPEG4) ||
+             !strcasecmp(mime, MEDIA_MIMETYPE_VIDEO_H263) ||
+             !strcasecmp(mime, MEDIA_MIMETYPE_VIDEO_AVC)))
+        {
+            flags &= ~kPreferSoftwareCodecs;
+        }
+    }
+#endif
+#endif
+
     if (flags & kPreferSoftwareCodecs) {
         matchingCodecs->sort(CompareSoftwareCodecsFirst);
     }
