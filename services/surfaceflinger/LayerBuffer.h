@@ -75,7 +75,10 @@ public:
     void unregisterBuffers();
     sp<OverlayRef> createOverlay(uint32_t w, uint32_t h, int32_t format,
             int32_t orientation);
-    
+#ifdef OMAP_ENHANCEMENT
+    sp<OverlayRef> createOverlay(uint32_t w, uint32_t h, int32_t format,
+            int32_t orientation, int isS3D);
+#endif
     sp<Source> getSource() const;
     sp<Source> clearSource();
     void setNeedsBlending(bool blending);
@@ -151,6 +154,12 @@ private:
         OverlaySource(LayerBuffer& layer,
                 sp<OverlayRef>* overlayRef, 
                 uint32_t w, uint32_t h, int32_t format, int32_t orientation);
+
+#ifdef OMAP_ENHANCEMENT
+        OverlaySource(LayerBuffer& layer,
+                sp<OverlayRef>* overlayRef,
+                uint32_t w, uint32_t h, int32_t format, int32_t orientation, int isS3D);
+#endif
         virtual ~OverlaySource();
         virtual void onDraw(const Region& clip) const;
         virtual void onTransaction(uint32_t flags);
@@ -203,6 +212,12 @@ private:
         
         virtual sp<OverlayRef> createOverlay(
                 uint32_t w, uint32_t h, int32_t format, int32_t orientation);
+
+#ifdef OMAP_ENHANCEMENT
+        virtual sp<OverlayRef> createOverlay(
+                uint32_t w, uint32_t h, int32_t format, int32_t orientation, int isS3D);
+#endif
+
     private:
         sp<LayerBuffer> getOwner() const {
             return static_cast<LayerBuffer*>(Surface::getOwner().get());

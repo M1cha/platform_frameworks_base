@@ -47,7 +47,8 @@ LOCAL_SRC_FILES:=                         \
         string.cpp
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
 LOCAL_SRC_FILES +=               \
-        TIVideoConfigParser.cpp
+        TIVideoConfigParser.cpp  \
+        TISEIMessagesParser.cpp
 endif
 LOCAL_C_INCLUDES:= \
 	$(JNI_H_INCLUDE) \

@@ -32,6 +32,10 @@ namespace android {
 class MediaBuffer;
 class MetaData;
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+struct S3D_params;
+#endif
+
 struct MediaSource : public RefBase {
     MediaSource();
 
@@ -127,6 +131,11 @@ public:
 #ifdef OMAP_ENHANCEMENT
     // Method to share externally allocated buffers with the Codec.
     virtual void setBuffers(Vector< sp<IMemory> > mBufferAddresses) {}
+    // Method used to reset read position without consuming the buffer
+    virtual int64_t setSeekTo(const ReadOptions *options) { return 0; }
+#if defined(TARGET_OMAP4)
+    virtual void parseSEIMessages(S3D_params &mS3Dparams) {}
+#endif
 #endif
 };
 

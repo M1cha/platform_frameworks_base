@@ -455,6 +455,10 @@ struct SharedVideoRenderer : public VideoRenderer {
         return mObj->setCallback(cb, cookie);
     }
 
+    virtual void set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint32_t s3d_order, uint32_t s3d_subsampling) {
+    mObj->set_s3d_frame_layout(s3d_mode, s3d_fmt, s3d_order, s3d_subsampling);
+     }
+
     virtual void resizeRenderer(uint32_t width, uint32_t height) {
           mObj->resizeRenderer(width, height);
     }
@@ -544,6 +548,59 @@ sp<IOMXRenderer> OMX::createRenderer(
     return new OMXRenderer(impl);
 }
 
+#ifdef OMAP_ENHANCEMENT 
+sp<IOMXRenderer> OMX::createRenderer(
+        const sp<ISurface> &surface,
+        const char *componentName,
+        OMX_COLOR_FORMATTYPE colorFormat,
+        size_t encodedWidth, size_t encodedHeight,
+        size_t displayWidth, size_t displayHeight, int32_t rotation, int isS3D) {
+    Mutex::Autolock autoLock(mLock);
+    VideoRenderer *impl = NULL;
+    void *libHandle = dlopen("libstagefrighthw.so", RTLD_NOW);
+
+    if (libHandle) {
+        typedef VideoRenderer *(*CreateRendererFunc)(
+                const sp<ISurface> &surface,
+                const char *componentName,
+                OMX_COLOR_FORMATTYPE colorFormat,
+                size_t displayWidth, size_t displayHeight,
+                size_t decodedWidth, size_t decodedHeight, int isS3D);
+
+        CreateRendererFunc func =
+            (CreateRendererFunc)dlsym(
+                    libHandle,
+                    "_Z14createRendererRKN7android2spINS_8ISurfaceEEEPKc20"
+                    "OMX_COLOR_FORMATTYPEjjjji");
+        if (func) {
+            impl = (*func)(surface, componentName, colorFormat,
+                    displayWidth, displayHeight, encodedWidth, encodedHeight, isS3D);
+
+            if (impl) {
+                impl = new SharedVideoRenderer(libHandle, impl);
+                libHandle = NULL;
+            }
+        }
+
+        if (libHandle) {
+            dlclose(libHandle);
+            libHandle = NULL;
+        }
+    }
+
+    if (!impl) {
+        LOGE("Using software renderer.");
+        impl = new SoftwareRenderer(
+                colorFormat,
+                surface,
+                displayWidth, displayHeight,
+                encodedWidth, encodedHeight);
+    }
+
+    return new OMXRenderer(impl);
+}
+#endif
+
 OMXRenderer::OMXRenderer(VideoRenderer *impl)
     : mImpl(impl) {
 }
@@ -569,6 +626,10 @@ Vector< sp<IMemory> > OMXRenderer::getBuffers() {
 
 bool OMXRenderer::setCallback(release_rendered_buffer_callback cb, void *cookie) {
     return mImpl->setCallback(cb, cookie);
+}
+
+void OMXRenderer::set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint32_t s3d_order, uint32_t s3d_subsampling) {
+    mImpl->set_s3d_frame_layout(s3d_mode, s3d_fmt, s3d_order, s3d_subsampling);
 }
 
 void OMXRenderer::resizeRenderer(uint32_t width, uint32_t height) {

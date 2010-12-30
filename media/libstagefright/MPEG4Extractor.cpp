@@ -43,6 +43,7 @@ namespace android {
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
 #define AVC_NALTYPE_SEI 6  /* Supplemental Enhancement Info */
 status_t AVCGetNALType(uint8_t *bitstream, int size, int *nal_type, int *nal_ref_idc);
+int16_t sei_rbsp(uint8_t *buffer, int32_t length, S3D_params &mS3Dparams);
 #endif
 
 #ifdef OMAP_ENHANCEMENT
@@ -81,6 +82,9 @@ public:
                 int32_t timeScale,
                 const sp<SampleTable> &sampleTable);
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    virtual void parseSEIMessages(S3D_params &mS3Dparams);
+#endif
     virtual status_t start(MetaData *params = NULL);
     virtual status_t stop();
 
@@ -1555,6 +1559,88 @@ MPEG4Source::~MPEG4Source() {
         stop();
     }
 }
+
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+void MPEG4Source::parseSEIMessages(S3D_params &mS3Dparams) {
+    status_t stats=0;
+
+    if (mIsAVC) {
+        int32_t max_size;
+        CHECK(mFormat->findInt32(kKeyMaxInputSize, &max_size));
+
+        int nalType, nalRefIdc;
+        status_t res;
+        size_t srcOffset = 0, size, num_bytes_read;
+
+        MediaBuffer *out;
+        uint8_t *myData;
+
+        status_t err = this->start();
+        if (err != OK)
+            goto EXIT;
+
+        err = read(&out);
+        if (err != OK)
+            goto EXIT;
+
+        myData = (uint8_t *)out->data();
+        // Getting the size read
+        size = out->size();
+        while (srcOffset < (size-4)) {
+            if((myData[srcOffset] == 0) &&
+                (myData[srcOffset+1] == 0) &&
+                (myData[srcOffset+2] == 0) &&
+                (myData[srcOffset+3] == 1))
+            {
+                srcOffset +=mNALLengthSize;
+                res = AVCGetNALType(&myData[srcOffset], (size-(srcOffset +mNALLengthSize)),&nalType, &nalRefIdc);
+                if (res)
+                {
+                    LOGE("FAILED Cannot determine nal type");
+                    goto EXIT;
+                }
+
+                switch (nalType)
+                {
+                    case AVC_NALTYPE_SEI:
+                    {
+                        LOGV("Calling DecodeSEI() \n");
+                        res = sei_rbsp(&myData[srcOffset], (size-(srcOffset +mNALLengthSize)),mS3Dparams);
+                        if(res)
+                        {
+                            LOGE("FAILED parsing SEI messages \n");
+                            goto EXIT;
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        LOGV("Default value for NALType %d \n", nalType);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                srcOffset++;
+                if (srcOffset + mNALLengthSize>= size)
+                {
+                    LOGV("No more NAL Unit \n");
+                    goto EXIT;
+                }
+            }
+        }
+
+        EXIT:
+        if(out != NULL)
+        {
+            out->release();
+            out = NULL;myData=NULL;
+        }
+       this->stop();
+    }
+}
+#endif
 
 status_t MPEG4Source::start(MetaData *params) {
     Mutex::Autolock autoLock(mLock);

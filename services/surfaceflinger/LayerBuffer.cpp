@@ -200,6 +200,23 @@ sp<OverlayRef> LayerBuffer::createOverlay(uint32_t w, uint32_t h, int32_t f,
     return result;
 }
 
+#ifdef OMAP_ENHANCEMENT
+sp<OverlayRef> LayerBuffer::createOverlay(uint32_t w, uint32_t h, int32_t f,
+        int32_t orientation, int isS3D)
+{
+    sp<OverlayRef> result;
+    Mutex::Autolock _l(mLock);
+    if (mSource != 0)
+        return result;
+    sp<OverlaySource> source = new OverlaySource(*this, &result, w, h, f, orientation, isS3D);
+    if (result != 0) {
+        mSource = source;
+    }
+    return result;
+}
+
+#endif
+
 sp<LayerBuffer::Source> LayerBuffer::getSource() const {
     Mutex::Autolock _l(mLock);
     return mSource;
@@ -259,6 +276,18 @@ sp<OverlayRef> LayerBuffer::SurfaceLayerBuffer::createOverlay(
         result = owner->createOverlay(w, h, format, orientation);
     return result;
 }
+
+#ifdef OMAP_ENHANCEMENT
+sp<OverlayRef> LayerBuffer::SurfaceLayerBuffer::createOverlay(
+        uint32_t w, uint32_t h, int32_t format, int32_t orientation, int isS3D) {
+    sp<OverlayRef> result;
+    sp<LayerBuffer> owner(getOwner());
+    if (owner != 0)
+        result = owner->createOverlay(w, h, format, orientation, isS3D);
+    return result;
+}
+
+#endif
 
 // ============================================================================
 // LayerBuffer::Buffer
@@ -622,6 +651,47 @@ LayerBuffer::OverlaySource::OverlaySource(LayerBuffer& layer,
             mWidth, mHeight, mFormat, mWidthStride, mHeightStride);
     getFlinger()->signalEvent();
 }
+
+#ifdef OMAP_ENHANCEMENT
+LayerBuffer::OverlaySource::OverlaySource(LayerBuffer& layer,
+        sp<OverlayRef>* overlayRef,
+        uint32_t w, uint32_t h, int32_t format, int32_t orientation, int isS3D)
+    : Source(layer), mVisibilityChanged(false),
+    mOverlay(0), mOverlayHandle(0), mOverlayDevice(0), mOrientation(orientation)
+{
+    overlay_control_device_t* overlay_dev = mLayer.mFlinger->getOverlayEngine();
+    if (overlay_dev == NULL) {
+        // overlays not supported
+        return;
+    }
+    mOverlayDevice = overlay_dev;
+    overlay_t* overlay = overlay_dev->createOverlay_S3D(overlay_dev, w, h, format, isS3D);
+    if (overlay == NULL) {
+        // couldn't create the overlay (no memory? no more overlays?)
+        return;
+    }
+
+    // enable dithering...
+    overlay_dev->setParameter(overlay_dev, overlay,
+            OVERLAY_DITHER, OVERLAY_ENABLE);
+
+    mOverlay = overlay;
+    mWidth = overlay->w;
+    mHeight = overlay->h;
+    mFormat = overlay->format;
+    mWidthStride = overlay->w_stride;
+    mHeightStride = overlay->h_stride;
+    mInitialized = false;
+
+    mOverlayHandle = overlay->getHandleRef(overlay);
+
+    sp<OverlayChannel> channel = new OverlayChannel( &layer );
+
+    *overlayRef = new OverlayRef(mOverlayHandle, channel,
+            mWidth, mHeight, mFormat, mWidthStride, mHeightStride);
+    mLayer.mFlinger->signalEvent();
+}
+#endif
 
 LayerBuffer::OverlaySource::~OverlaySource()
 {

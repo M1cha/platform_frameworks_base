@@ -141,6 +141,24 @@ public:
         remote()->transact(CREATE_OVERLAY, data, &reply);
         return OverlayRef::readFromParcel(reply);
     }
+
+#ifdef OMAP_ENHANCEMENT
+   virtual sp<OverlayRef> createOverlay(
+             uint32_t w, uint32_t h, int32_t format, int32_t orientation, int isS3D)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(ISurface::getInterfaceDescriptor());
+        data.writeInt32(w);
+        data.writeInt32(h);
+        data.writeInt32(format);
+        data.writeInt32(orientation);
+	    data.writeInt32(isS3D);
+        remote()->transact(CREATE_OVERLAY_S3D, data, &reply);
+        return OverlayRef::readFromParcel(reply);
+    }
+
+#endif
+
 };
 
 IMPLEMENT_META_INTERFACE(Surface, "android.ui.ISurface");
@@ -205,6 +223,19 @@ status_t BnSurface::onTransact(
             sp<OverlayRef> o = createOverlay(w, h, f, orientation);
             return OverlayRef::writeToParcel(reply, o);
         } break;
+#ifdef OMAP_ENHANCEMENT
+        case CREATE_OVERLAY_S3D: {
+            CHECK_INTERFACE(ISurface, data, reply);
+            int w = data.readInt32();
+            int h = data.readInt32();
+            int f = data.readInt32();
+            int orientation = data.readInt32();
+	        bool isS3D = data.readInt32();
+            sp<OverlayRef> o = createOverlay(w, h, f, orientation, isS3D);
+            return OverlayRef::writeToParcel(reply, o);
+        } break;
+
+#endif
         default:
             return BBinder::onTransact(code, data, reply, flags);
     }

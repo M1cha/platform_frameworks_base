@@ -19,6 +19,9 @@
 #define AWESOME_PLAYER_H_
 #ifdef OMAP_ENHANCEMENT
 #include <utils/Vector.h>
+#if defined(TARGET_OMAP4)
+#include "TISEIMessagesParser.h"
+#endif
 #endif
 
 #include "NuHTTPDataSource.h"
@@ -51,6 +54,7 @@ struct AwesomeRenderer : public RefBase {
 #ifdef OMAP_ENHANCEMENT
     virtual Vector< sp<IMemory> > getBuffers() = 0;
     virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) {return false;}
+    virtual void set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint32_t s3d_order, uint32_t s3d_subsampling){};
     virtual void resizeRenderer(uint32_t width, uint32_t height) = 0;
 #endif
 
@@ -121,6 +125,12 @@ private:
         VIDEO_AT_EOS        = 512,
         AUTO_LOOPING        = 1024,
     };
+
+#ifdef OMAP_ENHANCEMENT
+#if defined(TARGET_OMAP4)
+    S3D_params mS3Dparams;
+#endif
+#endif
 
     mutable Mutex mLock;
     Mutex mMiscStateLock;

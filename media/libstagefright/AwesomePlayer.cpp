@@ -100,6 +100,10 @@ struct AwesomeRemoteRenderer : public AwesomeRenderer {
         return mTarget->setCallback(cb, cookie);
     }
 
+    virtual void set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint32_t s3d_order, uint32_t s3d_subsampling) {
+         mTarget->set_s3d_frame_layout(s3d_mode, s3d_fmt, s3d_order, s3d_subsampling);
+    }
+
     virtual void resizeRenderer(uint32_t width, uint32_t height) {
         mTarget->resizeRenderer(width, height);
     }
@@ -288,6 +292,14 @@ AwesomePlayer::AwesomePlayer()
 
     mAudioStatusEventPending = false;
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    mS3Dparams.active = S3D_MODE_OFF;
+    mS3Dparams.mode = S3D_MODE_OFF;
+    mS3Dparams.fmt = S3D_FORMAT_NONE;
+    mS3Dparams.order = S3D_ORDER_LF;
+    mS3Dparams.subsampling = S3D_SS_NONE;
+#endif
+
     reset();
 }
 
@@ -405,7 +417,13 @@ status_t AwesomePlayer::setDataSource_l(const sp<MediaExtractor> &extractor) {
         CHECK(meta->findCString(kKeyMIMEType, &mime));
 
         if (!haveVideo && !strncasecmp(mime, "video/", 6)) {
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+           sp<MediaSource> mysource = extractor->getTrack(i);
+           mysource->parseSEIMessages(mS3Dparams);
+           setVideoSource(mysource);
+#else
             setVideoSource(extractor->getTrack(i));
+#endif
             haveVideo = true;
         } else if (!haveAudio && !strncasecmp(mime, "audio/", 6)) {
             setAudioSource(extractor->getTrack(i));
@@ -918,7 +936,10 @@ void AwesomePlayer::initRenderer_l() {
         }
 
         mVideoRenderer.clear();
-
+#if defined( OMAP_ENHANCEMENT) && !defined(TARGET_OMAP4)
+        // Initializing S3D flag, to be passed by higher layer
+        int isS3D =0;
+#endif
         // Must ensure that mVideoRenderer's destructor is actually executed
         // before creating a new one.
         IPCThreadState::self()->flushCommands();
@@ -927,15 +948,34 @@ void AwesomePlayer::initRenderer_l() {
             // Our OMX codecs allocate buffers on the media_server side
             // therefore they require a remote IOMXRenderer that knows how
             // to display them.
-            mVideoRenderer = new AwesomeRemoteRenderer(
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+        mVideoRenderer = new AwesomeRemoteRenderer(
                 mClient.interface()->createRenderer(
                         mISurface, component,
                         (OMX_COLOR_FORMATTYPE)format,
                         decodedWidth, decodedHeight,
-                        mVideoWidth, mVideoHeight,
-                        rotationDegrees));
+                        mVideoWidth, mVideoHeight,rotationDegrees, mS3Dparams.active));
+#elif defined(OMAP_ENHANCEMENT)
+        mVideoRenderer = new AwesomeRemoteRenderer(
+                mClient.interface()->createRenderer(
+                        mISurface, component,
+                        (OMX_COLOR_FORMATTYPE)format,
+                        decodedWidth, decodedHeight,
+                        mVideoWidth, mVideoHeight,rotationDegrees, isS3D));
+#else
+        mVideoRenderer = new AwesomeRemoteRenderer(
+                mClient.interface()->createRenderer(
+                        mISurface, component,
+                        (OMX_COLOR_FORMATTYPE)format,
+                        decodedWidth, decodedHeight,
+                        mVideoWidth, mVideoHeight, rotationDegrees));
+#endif
 #ifdef OMAP_ENHANCEMENT
             if (!strncmp("OMX.TI", component, 6)) {
+#if defined(TARGET_OMAP4)
+                if(mS3Dparams.active)
+                    mVideoRenderer->set_s3d_frame_layout(mS3Dparams.mode ,mS3Dparams.fmt ,mS3Dparams.order, mS3Dparams.subsampling);
+#endif
                 mBufferReleaseCallbackSet = mVideoRenderer->setCallback(releaseRenderedBufferCallback, this);
                 mVideoRenderer->setCallback(releaseRenderedBufferCallback, this);
             }

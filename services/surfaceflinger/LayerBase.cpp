@@ -654,6 +654,16 @@ sp<OverlayRef> LayerBaseClient::Surface::createOverlay(
     return NULL;
 };
 
+#ifdef OMAP_ENHANCEMENT
+sp<OverlayRef> LayerBaseClient::Surface::createOverlay(
+        uint32_t w, uint32_t h, int32_t format, int32_t orientation, int isS3D)
+{
+    return NULL;
+};
+
+
+#endif
+
 // ---------------------------------------------------------------------------
 
 }; // namespace android

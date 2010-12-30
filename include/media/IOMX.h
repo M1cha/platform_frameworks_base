@@ -118,6 +118,14 @@ public:
             size_t displayWidth, size_t displayHeight,
             int32_t rotationDegrees) = 0;
 
+#ifdef OMAP_ENHANCEMENT
+        virtual sp<IOMXRenderer> createRenderer(
+            const sp<ISurface> &surface,
+            const char *componentName,
+            OMX_COLOR_FORMATTYPE colorFormat,
+            size_t encodedWidth, size_t encodedHeight,
+            size_t displayWidth, size_t displayHeight, int32_t rotation, int isS3D) = 0;
+#endif
     // Note: These methods are _not_ virtual, it exists as a wrapper around
     // the virtual "createRenderer" method above facilitating extraction
     // of the ISurface from a regular Surface or a java Surface object.
@@ -129,6 +137,14 @@ public:
             size_t displayWidth, size_t displayHeight,
             int32_t rotationDegrees);
 
+#ifdef OMAP_ENHANCEMENT
+    sp<IOMXRenderer> createRenderer(
+            const sp<Surface> &surface,
+            const char *componentName,
+            OMX_COLOR_FORMATTYPE colorFormat,
+            size_t encodedWidth, size_t encodedHeight,
+            size_t displayWidth, size_t displayHeight, int32_t rotation, int isS3D);
+#endif
     sp<IOMXRenderer> createRendererFromJavaSurface(
             JNIEnv *env, jobject javaSurface,
             const char *componentName,
@@ -194,6 +210,7 @@ public:
 #ifdef OMAP_ENHANCEMENT
     virtual Vector< sp<IMemory> > getBuffers() = 0;
     virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) = 0;
+    virtual void set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint32_t s3d_order, uint32_t s3d_subsampling) =0;
     virtual void resizeRenderer(uint32_t width, uint32_t height) = 0;
 #endif
 };

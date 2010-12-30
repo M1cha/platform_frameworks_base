@@ -48,6 +48,9 @@ protected:
         CREATE_OVERLAY,
         REQUEST_BUFFER,
         SET_BUFFER_COUNT,
+#ifdef OMAP_ENHANCEMENT
+        CREATE_OVERLAY_S3D
+#endif
     };
 
 public: 
@@ -109,6 +112,11 @@ public:
     
     virtual sp<OverlayRef> createOverlay(
             uint32_t w, uint32_t h, int32_t format, int32_t orientation) = 0;
+#ifdef OMAP_ENHANCEMENT
+    virtual sp<OverlayRef> createOverlay(
+            uint32_t w, uint32_t h, int32_t format, int32_t orientation, int isS3D) = 0;
+#endif
+
 };
 
 // ----------------------------------------------------------------------------
