@@ -218,17 +218,21 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_AUDIO_AMR_WB, "AMRWBDecoder" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "AACDecoder" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.TI.DUCATI1.VIDEO.DECODER" },
+    { MEDIA_MIMETYPE_VIDEO_MPEG4, "M4vH263Decoder" },
     { MEDIA_MIMETYPE_VIDEO_H263, "OMX.TI.DUCATI1.VIDEO.DECODER" },
+    { MEDIA_MIMETYPE_VIDEO_H263, "M4vH263Decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.DUCATI1.VIDEO.DECODER" },
+    { MEDIA_MIMETYPE_VIDEO_AVC, "AVCDecoder" },
+    { MEDIA_MIMETYPE_VIDEO_VPX, "VPXDecoder" },
 };
 
 //Maintain only s/w encoders till ducati encoders are integrated to SF
 static const CodecInfo kEncoderInfo[] = {
     { MEDIA_MIMETYPE_AUDIO_AMR_NB, "AMRNBEncoder" },
-    { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.PV.aacenc" },
-    { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.PV.mpeg4enc" },
-    { MEDIA_MIMETYPE_VIDEO_H263, "OMX.PV.h263enc" },
-    { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.PV.avcenc" },
+    { MEDIA_MIMETYPE_AUDIO_AAC, "AACEncoder" },
+    { MEDIA_MIMETYPE_VIDEO_MPEG4, "M4vH263Encoder" },
+    { MEDIA_MIMETYPE_VIDEO_H263, "M4vH263Encoder" },
+    { MEDIA_MIMETYPE_VIDEO_AVC, "AVCEncoder" },
 };
 #else
 static const CodecInfo kDecoderInfo[] = {
