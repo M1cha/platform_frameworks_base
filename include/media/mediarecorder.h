@@ -44,8 +44,12 @@ enum audio_source {
     AUDIO_SOURCE_VOICE_CALL = 4,
     AUDIO_SOURCE_CAMCORDER = 5,
     AUDIO_SOURCE_VOICE_RECOGNITION = 6,
+#ifdef OMAP_ENHANCEMENT
+   AUDIO_SOURCE_FM_ANALOG = 7,
+   AUDIO_SOURCE_MAX = AUDIO_SOURCE_FM_ANALOG,
+#else
     AUDIO_SOURCE_MAX = AUDIO_SOURCE_VOICE_RECOGNITION,
-
+#endif
     AUDIO_SOURCE_LIST_END  // must be last - used to validate audio source type
 };
 
