@@ -44,6 +44,10 @@ import android.os.SystemProperties;
 import android.provider.Contacts.People;
 import android.provider.Settings;
 import android.server.BluetoothA2dpService;
+/* TI HID port - start */
+import android.server.BluetoothHidService;
+/* TI HID port - end */
+
 import android.server.BluetoothService;
 import android.server.search.SearchManagerService;
 import android.util.EventLog;
@@ -120,6 +124,10 @@ class ServerThread extends Thread {
         WindowManagerService wm = null;
         BluetoothService bluetooth = null;
         BluetoothA2dpService bluetoothA2dp = null;
+        /* TI HID port - start */
+        BluetoothHidService bluetoothHid = null;
+        /* TI HID port - end */
+
         HeadsetObserver headset = null;
         DockObserver dock = null;
         UsbObserver usb = null;
@@ -215,6 +223,13 @@ class ServerThread extends Thread {
                 bluetoothA2dp = new BluetoothA2dpService(context, bluetooth);
                 ServiceManager.addService(BluetoothA2dpService.BLUETOOTH_A2DP_SERVICE,
                                           bluetoothA2dp);
+                /* TI HID port - start */
+                if (SystemProperties.OMAP_ENHANCEMENT) {
+                    bluetoothHid = new BluetoothHidService(context, bluetooth);
+                    ServiceManager.addService(BluetoothHidService.BLUETOOTH_HID_SERVICE,
+                                          bluetoothHid);
+                }
+                /* TI HID port - end */
 
                 int bluetoothOn = Settings.Secure.getInt(mContentResolver,
                     Settings.Secure.BLUETOOTH_ON, 0);
