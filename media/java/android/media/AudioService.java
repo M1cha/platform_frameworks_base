@@ -121,6 +121,7 @@ public class AudioService extends IAudioService.Stub {
     private Object mSettingsLock = new Object();
     private boolean mMediaServerOk;
     private static final String ACTION_FM_PLUG = "android.intent.action.FM_PLUG";
+    private static final String ACTION_FMTX_PLUG = "android.intent.action.FMTX_PLUG";
     private SoundPool mSoundPool;
     private Object mSoundEffectsLock = new Object();
     private static final int NUM_SOUNDPOOL_CHANNELS = 4;
@@ -302,6 +303,7 @@ public class AudioService extends IAudioService.Stub {
         IntentFilter intentFilter =
                 new IntentFilter(Intent.ACTION_HEADSET_PLUG);
         intentFilter.addAction(ACTION_FM_PLUG);
+        intentFilter.addAction(ACTION_FMTX_PLUG);
         intentFilter.addAction(BluetoothA2dp.ACTION_SINK_STATE_CHANGED);
         intentFilter.addAction(BluetoothHeadset.ACTION_STATE_CHANGED);
         intentFilter.addAction(Intent.ACTION_DOCK_EVENT);
@@ -1960,7 +1962,22 @@ public class AudioService extends IAudioService.Stub {
                                 AudioSystem.DEVICE_STATE_AVAILABLE,"");
                       mConnectedDevices.put( new Integer(AudioSystem.DEVICE_IN_FM_ANALOG ), "");
                }
-           }
+           } else if (SystemProperties.OMAP_ENHANCEMENT && action.equals(ACTION_FMTX_PLUG)) {
+               int state = intent.getIntExtra("state",0);
+
+               boolean isConnected = mConnectedDevices.containsKey(AudioSystem.DEVICE_OUT_FM_TRANSMIT );
+               if (state == 0 && isConnected) {
+                      Log.e(TAG,"calling FM Transmit Off");
+                      AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM_TRANSMIT ,
+                               AudioSystem.DEVICE_STATE_UNAVAILABLE,"");
+                      mConnectedDevices.remove(AudioSystem.DEVICE_OUT_FM_TRANSMIT );
+               } else if (state == 1 && !isConnected)  {
+                      Log.e(TAG,"calling FM Transmit On");
+                      AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM_TRANSMIT ,
+                                AudioSystem.DEVICE_STATE_AVAILABLE,"");
+                      mConnectedDevices.put( new Integer(AudioSystem.DEVICE_OUT_FM_TRANSMIT ), "");
+               }
+            }
         }
     }
 
