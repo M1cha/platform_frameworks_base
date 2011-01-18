@@ -109,10 +109,26 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
         OMXClient *client,
         const sp<MetaData> &trackMeta,
         const sp<MediaSource> &source, uint32_t flags) {
+
+#ifdef OMAP_ENHANCEMENT
+    flags |= OMXCodec::kPreferThumbnailMode;
+#endif
+
     sp<MediaSource> decoder =
         OMXCodec::Create(
                 client->interface(), source->getFormat(), false, source,
                 NULL, flags | OMXCodec::kClientNeedsFramebuffer);
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    sp<MetaData> source_meta = source->getFormat();
+    int32_t format;
+    const char *component;
+
+    //OMAP4 ducati codecs => displaywidth,displayheight are lost due to padded fields by codec.
+    //save them here.
+    int32_t displayWidth, displayHeight;
+    CHECK(source_meta->findInt32(kKeyWidth, &displayWidth));
+    CHECK(source_meta->findInt32(kKeyHeight, &displayHeight));
+#endif
 
     if (decoder.get() == NULL) {
         LOGV("unable to instantiate video decoder.");
@@ -197,6 +213,60 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
     }
 
     VideoFrame *frame = new VideoFrame;
+
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    int32_t srcFormat;
+    CHECK(meta->findInt32(kKeyColorFormat, &srcFormat));
+
+    if(((OMX_COLOR_FORMATTYPE)srcFormat == OMX_COLOR_FormatYUV420PackedSemiPlanar) ||
+       ((OMX_COLOR_FORMATTYPE)srcFormat == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar_Sequential_TopBottom)){
+        frame->mWidth = displayWidth;
+        frame->mHeight = displayHeight;
+        frame->mDisplayWidth = displayWidth;
+        frame->mDisplayHeight = displayHeight;
+        frame->mSize = displayWidth * displayHeight * 2;
+        frame->mData = new uint8_t[frame->mSize];
+    frame->mRotationAngle = rotationAngle;
+    }else {
+        frame->mWidth = width;
+        frame->mHeight = height;
+        frame->mDisplayWidth = width;
+        frame->mDisplayHeight = height;
+        frame->mSize = width * height * 2;
+        frame->mData = new uint8_t[frame->mSize];
+    frame->mRotationAngle = rotationAngle;
+    }
+
+    if(((OMX_COLOR_FORMATTYPE)srcFormat == OMX_COLOR_FormatYUV420PackedSemiPlanar) ||
+       ((OMX_COLOR_FORMATTYPE)srcFormat == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar_Sequential_TopBottom)){
+
+        ColorConverter converter(
+                (OMX_COLOR_FORMATTYPE)srcFormat, OMX_COLOR_Format16bitRGB565);
+
+        CHECK(converter.isValid());
+
+        converter.convert(
+                width, height,
+                (const uint8_t *)buffer->data() + buffer->range_offset(),
+                0, //1D buffer in 1.16 Ducati rls. If 2D buffer -> 4096 stride should be used
+                frame->mData, displayWidth * 2,
+                displayWidth,displayHeight,buffer->range_offset(),isinterlaced(trackMeta));
+    }
+    else{
+
+        ColorConverter converter(
+                (OMX_COLOR_FORMATTYPE)srcFormat, OMX_COLOR_Format16bitRGB565);
+
+        CHECK(converter.isValid());
+
+        converter.convert(
+                width, height,
+                (const uint8_t *)buffer->data() + buffer->range_offset(),
+                0,
+                frame->mData, width * 2);
+    }
+
+#else
     frame->mWidth = width;
     frame->mHeight = height;
     frame->mDisplayWidth = width;
@@ -217,6 +287,7 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
             (const uint8_t *)buffer->data() + buffer->range_offset(),
             0,
             frame->mData, width * 2);
+#endif
 
     buffer->release();
     buffer = NULL;
@@ -271,13 +342,25 @@ VideoFrame *StagefrightMetadataRetriever::captureFrame() {
     VideoFrame *frame =
         extractVideoFrameWithCodecFlags(
                 &mClient, trackMeta, source, OMXCodec::kPreferSoftwareCodecs);
-
+#ifdef OMAP_ENHANCEMENT
+    /*In case the first attempt have failed try a second time*/
+    if (frame == NULL) {
+        LOGD("Software decoder failed to extract thumbnail, "
+             "trying hardware decoder with first frame in clip.");
+        /*Set the flag kSelectFirstSample in order to force decoding frame 0*/
+        trackMeta = mExtractor->getTrackMetaData(
+            i, MediaExtractor::kSelectFirstSample | MediaExtractor::kIncludeExtensiveMetaData);
+        /*Get the frame docoded*/
+        frame = extractVideoFrameWithCodecFlags(&mClient, trackMeta, source, 0);
+    }
+#else
     if (frame == NULL) {
         LOGV("Software decoder failed to extract thumbnail, "
              "trying hardware decoder.");
 
         frame = extractVideoFrameWithCodecFlags(&mClient, trackMeta, source, 0);
     }
+#endif
 
     return frame;
 }

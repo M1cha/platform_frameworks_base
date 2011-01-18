@@ -461,6 +461,9 @@ uint32_t OMXCodec::getComponentQuirks(
         quirks |= kRequiresAllocateBufferOnInputPorts;
         quirks |= kInputBufferSizesAreBogus;
 
+        if( flags & kPreferThumbnailMode) {
+                quirks |= OMXCodec::kRequiresAllocateBufferOnOutputPorts;
+        }
     }
 #ifdef TARGET_OMAP4
     else if(!strcmp(componentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
@@ -469,6 +472,11 @@ uint32_t OMXCodec::getComponentQuirks(
         // on output port. I must use OMX_UseBuffer on input port to ensure
         // 128 byte alignment.
         quirks |= kRequiresAllocateBufferOnInputPorts;
+
+        if(flags & kPreferThumbnailMode)
+        {
+            quirks |= OMXCodec::kThumbnailMode;
+        }
 
         if(flags & kPreferAllocateBufferOnOutputPorts) {
                 quirks |= OMXCodec::kRequiresAllocateBufferOnOutputPorts;
@@ -1472,7 +1480,11 @@ status_t OMXCodec::setVideoOutputFormat(
                 //update input buffer size as per resolution
                 def.nBufferSize = width * height;
 
+         if(mQuirks & OMXCodec::kThumbnailMode){
+                def.nBufferCountActual = 1;
+         }else{
                 def.nBufferCountActual = 4;
+    }
     }
 #else
 #if 1
@@ -1554,6 +1566,32 @@ status_t OMXCodec::setVideoOutputFormat(
 
     err = mOMX->setParameter(
             mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
+
+        if(mQuirks & OMXCodec::kThumbnailMode){
+
+            LOGD("Thumbnail Mode");
+            //Get the calculated min buffer count
+            err = mOMX->getParameter(
+                    mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+            CHECK_EQ(err, OK);
+            CHECK_EQ(def.eDomain, OMX_PortDomainVideo);
+
+            //Thumbnail usecase. Set buffer count to optimal
+            def.nBufferCountActual = def.nBufferCountMin;
+
+            //Set the proper parameters again, as it is marshalled in Get_Parameter()
+            video_def->nFrameWidth = width;
+            video_def->nFrameHeight = height;
+
+            err = mOMX->setParameter(
+                    mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+            CHECK_EQ(err, OK);
+        }
+   }
+#endif
 
     return err;
 }
@@ -2463,7 +2501,13 @@ void OMXCodec::fillOutputBuffers() {
 
     Vector<BufferInfo> *buffers = &mPortBuffers[kPortIndexOutput];
     for (size_t i = 0; i < buffers->size(); ++i) {
+#if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
+        if (!(*buffers)[i].mOwnedByComponent) {
+            fillOutputBuffer(&buffers->editItemAt(i));
+        }
+#else
         fillOutputBuffer(&buffers->editItemAt(i));
+#endif
     }
 }
 
