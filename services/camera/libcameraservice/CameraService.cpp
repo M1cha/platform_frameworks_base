@@ -542,10 +542,45 @@ status_t CameraService::Client::registerPreviewBuffers() {
 
 status_t CameraService::Client::setOverlay() {
     int w, h;
+#ifdef OMAP_ENHANCEMENT
+    uint32_t overlayFormat;
+#endif
+
     CameraParameters params(mHardware->getParameters());
     params.getPreviewSize(&w, &h);
 
-    if (w != mOverlayW || h != mOverlayH || mOrientationChanged) {
+#ifdef OMAP_ENHANCEMENT
+
+    ///Query the current preview pixel format from Camera HAL to create the overlay
+    ///in that particular format
+    const char *prevFormat = params.getPreviewFormat();
+    if(strcmp(prevFormat, CameraParameters::PIXEL_FORMAT_YUV422I)==0)
+    {
+        LOGD("Camera service Selected OVERLAY_FORMAT_CbYCrY_422_I");
+        overlayFormat = OVERLAY_FORMAT_CbYCrY_422_I;
+    }
+    else if(strcmp(prevFormat, CameraParameters::PIXEL_FORMAT_YUV420SP)==0)
+    {
+        LOGD("Camera service Selected OVERLAY_FORMAT_YCbCr_420_SP");
+        overlayFormat = OVERLAY_FORMAT_YCbCr_420_SP;
+    }
+    else if(strcmp(prevFormat, CameraParameters::PIXEL_FORMAT_RGB565)==0)
+    {
+        LOGD("Camera service Selected OVERLAY_FORMAT_RGB_565");
+        overlayFormat = OVERLAY_FORMAT_RGB_565;
+    }
+    else
+    {
+        overlayFormat = OVERLAY_FORMAT_DEFAULT;
+    }
+
+#endif
+
+    if (w != mOverlayW || h != mOverlayH || mOrientationChanged
+#ifdef OMAP_ENHANCEMENT
+        || ((mOverlayFormat!=NULL) && (strcmp(prevFormat, mOverlayFormat)!=0))
+#endif
+    ) {
         // Force the destruction of any previous overlay
         sp<Overlay> dummy;
         mHardware->setOverlay(dummy);
@@ -565,8 +600,13 @@ status_t CameraService::Client::setOverlay() {
             // wait in the createOverlay call if the previous overlay is in the
             // process of being destroyed.
             for (int retry = 0; retry < 50; ++retry) {
+#ifdef OMAP_ENHANCEMENT
+                mOverlayRef = mSurface->createOverlay(w, h, overlayFormat,
+                                      mOrientation);
+#else
                 mOverlayRef = mSurface->createOverlay(w, h, OVERLAY_FORMAT_DEFAULT,
-                                                      mOrientation);
+                                      mOrientation);
+#endif
                 if (mOverlayRef != 0) break;
                 LOGW("Overlay create failed - retrying");
                 usleep(20000);
@@ -585,6 +625,10 @@ status_t CameraService::Client::setOverlay() {
 
     mOverlayW = w;
     mOverlayH = h;
+
+#ifdef OMAP_ENHANCEMENT
+    strncpy(mOverlayFormat, prevFormat, OVERLAY_FORMAT_BUFFER_SIZE);
+#endif
 
     return result;
 }

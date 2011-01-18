@@ -26,6 +26,10 @@
 /* This needs to be increased if we can have more cameras */
 #define MAX_CAMERAS 2
 
+#ifdef OMAP_ENHANCEMENT
+#define OVERLAY_FORMAT_BUFFER_SIZE  40
+#endif
+
 namespace android {
 
 class MemoryHeapBase;
@@ -148,7 +152,6 @@ private:
         void                    handleGenericNotify(int32_t msgType, int32_t ext1, int32_t ext2);
         void                    handleGenericData(int32_t msgType, const sp<IMemory>& dataPtr);
         void                    handleGenericDataTimestamp(nsecs_t timestamp, int32_t msgType, const sp<IMemory>& dataPtr);
-
         void                    copyFrameAndPostCopiedFrame(
                                     const sp<ICameraClient>& client,
                                     const sp<IMemoryHeap>& heap,
@@ -197,6 +200,11 @@ private:
         // This function keeps trying to grab mLock, or give up if the message
         // is found to be disabled. It returns true if mLock is grabbed.
         bool                    lockIfMessageWanted(int32_t msgType);
+
+#ifdef OMAP_ENHANCEMENT
+        char                     mOverlayFormat[OVERLAY_FORMAT_BUFFER_SIZE];
+#endif
+
     };
 };
 
