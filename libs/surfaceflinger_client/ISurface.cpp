@@ -157,6 +157,14 @@ public:
         return OverlayRef::readFromParcel(reply);
     }
 
+    virtual void setDisplayId(int displayId) {
+        Parcel data, reply;
+        data.writeInterfaceToken(ISurface::getInterfaceDescriptor());
+        data.writeInt32(displayId);
+        remote()->transact(SET_DISPLAY_ID, data, &reply);
+        return;
+    }
+
 #endif
 
 };
@@ -233,6 +241,13 @@ status_t BnSurface::onTransact(
 	        bool isS3D = data.readInt32();
             sp<OverlayRef> o = createOverlay(w, h, f, orientation, isS3D);
             return OverlayRef::writeToParcel(reply, o);
+        } break;
+
+        case SET_DISPLAY_ID: {
+            CHECK_INTERFACE(ISurface, data, reply);
+            int dpy = data.readInt32();
+            setDisplayId(dpy);
+            return NO_ERROR;
         } break;
 
 #endif

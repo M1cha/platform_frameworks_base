@@ -215,6 +215,13 @@ sp<OverlayRef> LayerBuffer::createOverlay(uint32_t w, uint32_t h, int32_t f,
     return result;
 }
 
+void LayerBuffer::setDisplayId(int displayId) {
+    sp<Source> source(getSource());
+    if (LIKELY(source != 0)) {
+        source->setDisplayId(displayId);
+    }
+}
+
 #endif
 
 sp<LayerBuffer::Source> LayerBuffer::getSource() const {
@@ -287,6 +294,14 @@ sp<OverlayRef> LayerBuffer::SurfaceLayerBuffer::createOverlay(
     return result;
 }
 
+void LayerBuffer::SurfaceLayerBuffer::setDisplayId(int dpy) {
+    sp<LayerBuffer> owner(getOwner());
+    if(owner != 0)
+        {
+        owner->setDisplayId(dpy);
+        }
+}
+
 #endif
 
 // ============================================================================
@@ -353,7 +368,10 @@ void LayerBuffer::Source::postBuffer(ssize_t offset) {
 }
 void LayerBuffer::Source::unregisterBuffers() {
 }
-
+#ifdef OMAP_ENHANCEMENT
+void LayerBuffer::Source::setDisplayId(int dpy) {
+}
+#endif
 // ---------------------------------------------------------------------------
 
 LayerBuffer::BufferSource::BufferSource(LayerBuffer& layer,
@@ -724,6 +742,21 @@ void LayerBuffer::OverlaySource::onvalidateVisibility(const Transform&)
     mVisibilityChanged = true;
 }
 
+#ifdef OMAP_ENHANCEMENT
+void LayerBuffer::OverlaySource::setDisplayId(int displayId) {
+    if (UNLIKELY(mOverlay != 0)) {
+        // we need a lock here to protect "destroy"
+        Mutex::Autolock _l(mOverlaySourceLock);
+        if (mOverlay) {
+            overlay_control_device_t* overlay_dev = mOverlayDevice;
+            mLayer.dpy = displayId;
+            overlay_dev->setParameter(overlay_dev, mOverlay,
+                                    OVERLAY_SET_SCREEN_ID, mLayer.dpy);
+            overlay_dev->commit(overlay_dev, mOverlay);
+        }
+    }
+}
+#endif
 void LayerBuffer::OverlaySource::onVisibilityResolved(
         const Transform& planeTransform)
 {

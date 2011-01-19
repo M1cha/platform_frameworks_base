@@ -313,6 +313,7 @@ public:
 #ifdef OMAP_ENHANCEMENT
         virtual sp<OverlayRef> createOverlay(uint32_t w, uint32_t h,
                 int32_t format, int32_t orientation, int isS3D);
+	virtual void setDisplayId(int displayId);
 #endif
     protected:
         friend class LayerBaseClient;

@@ -662,6 +662,10 @@ sp<OverlayRef> LayerBaseClient::Surface::createOverlay(
 };
 
 
+void LayerBaseClient::Surface::setDisplayId(int displayId)
+{
+    return;
+}
 #endif
 
 // ---------------------------------------------------------------------------
