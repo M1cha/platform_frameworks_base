@@ -230,9 +230,9 @@ static const CodecInfo kDecoderInfo[] = {
 static const CodecInfo kEncoderInfo[] = {
     { MEDIA_MIMETYPE_AUDIO_AMR_NB, "AMRNBEncoder" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "AACEncoder" },
-    { MEDIA_MIMETYPE_VIDEO_MPEG4, "M4vH263Encoder" },
-    { MEDIA_MIMETYPE_VIDEO_H263, "M4vH263Encoder" },
-    { MEDIA_MIMETYPE_VIDEO_AVC, "AVCEncoder" },
+    { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.PV.mpeg4enc" },
+    { MEDIA_MIMETYPE_VIDEO_H263, "OMX.PV.h263enc" },
+    { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.PV.avcenc" },
 };
 #else
 static const CodecInfo kDecoderInfo[] = {
