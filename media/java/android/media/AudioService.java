@@ -120,7 +120,7 @@ public class AudioService extends IAudioService.Stub {
     private int mMode;
     private Object mSettingsLock = new Object();
     private boolean mMediaServerOk;
-
+    private static final String ACTION_FM_PLUG = "android.intent.action.FM_PLUG";
     private SoundPool mSoundPool;
     private Object mSoundEffectsLock = new Object();
     private static final int NUM_SOUNDPOOL_CHANNELS = 4;
@@ -301,6 +301,7 @@ public class AudioService extends IAudioService.Stub {
         // Register for device connection intent broadcasts.
         IntentFilter intentFilter =
                 new IntentFilter(Intent.ACTION_HEADSET_PLUG);
+        intentFilter.addAction(ACTION_FM_PLUG);
         intentFilter.addAction(BluetoothA2dp.ACTION_SINK_STATE_CHANGED);
         intentFilter.addAction(BluetoothHeadset.ACTION_STATE_CHANGED);
         intentFilter.addAction(Intent.ACTION_DOCK_EVENT);
@@ -1944,7 +1945,22 @@ public class AudioService extends IAudioService.Stub {
                         }
                     }
                 }
-            }
+           } else if (SystemProperties.OMAP_ENHANCEMENT && action.equals(ACTION_FM_PLUG)) {
+               int state = intent.getIntExtra("state",0);
+
+               boolean isConnected = mConnectedDevices.containsKey(AudioSystem.DEVICE_IN_FM_ANALOG );
+               if (state == 0 && isConnected) {
+                      Log.v(TAG,"calling FM Rx Analog  Off");
+                      AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_IN_FM_ANALOG ,
+                               AudioSystem.DEVICE_STATE_UNAVAILABLE,"");
+                      mConnectedDevices.remove(AudioSystem.DEVICE_IN_FM_ANALOG );
+               } else if (state == 1 && !isConnected)  {
+                      Log.v(TAG,"calling FM Rx Analog On");
+                      AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_IN_FM_ANALOG ,
+                                AudioSystem.DEVICE_STATE_AVAILABLE,"");
+                      mConnectedDevices.put( new Integer(AudioSystem.DEVICE_IN_FM_ANALOG ), "");
+               }
+           }
         }
     }
 
