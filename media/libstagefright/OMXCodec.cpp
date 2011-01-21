@@ -1642,7 +1642,12 @@ status_t OMXCodec::setupMPEG4EncoderParameters(const sp<MetaData>& meta) {
     mpeg4type.nAllowedPictureTypes =
         OMX_VIDEO_PictureTypeI | OMX_VIDEO_PictureTypeP;
 
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    mpeg4type.nPFrames = setPFramesSpacing(iFramesInterval, frameRate) -1;
+#else
     mpeg4type.nPFrames = setPFramesSpacing(iFramesInterval, frameRate);
+#endif
+
     if (mpeg4type.nPFrames == 0) {
         mpeg4type.nAllowedPictureTypes = OMX_VIDEO_PictureTypeI;
     }
@@ -1650,6 +1655,20 @@ status_t OMXCodec::setupMPEG4EncoderParameters(const sp<MetaData>& meta) {
     mpeg4type.nIDCVLCThreshold = 0;
     mpeg4type.bACPred = OMX_TRUE;
     mpeg4type.nMaxPacketSize = 256;
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    int32_t width, height;
+    success = success && meta->findInt32(kKeyWidth, &width);
+    success = success && meta->findInt32(kKeyHeight, &height);
+    // In order to have normal amount of resync markers(and packets) in the encoded stream,
+    // we need set this value to 4096, this will reduce the number of bits used for marking
+    // seperate packets in the stream and allow us to use these bits for other purposes.
+    if((width >= 640) || (height >= 480)) {
+    // To improve performance
+        if( (frameRate > 15) && (bitRate > 2000000)) {
+            mpeg4type.bACPred = OMX_FALSE;
+        }
+    }
+#endif
     mpeg4type.nTimeIncRes = 1000;
     mpeg4type.nHeaderExtension = 0;
     mpeg4type.bReversibleVLC = OMX_FALSE;
@@ -1662,6 +1681,9 @@ status_t OMXCodec::setupMPEG4EncoderParameters(const sp<MetaData>& meta) {
     if (err != OK) return err;
     mpeg4type.eProfile = static_cast<OMX_VIDEO_MPEG4PROFILETYPE>(profileLevel.mProfile);
     mpeg4type.eLevel = static_cast<OMX_VIDEO_MPEG4LEVELTYPE>(profileLevel.mLevel);
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    mpeg4type.eLevel = OMX_VIDEO_MPEG4Level5;
+#endif
 
     err = mOMX->setParameter(
             mNode, OMX_IndexParamVideoMpeg4, &mpeg4type, sizeof(mpeg4type));
@@ -1669,6 +1691,47 @@ status_t OMXCodec::setupMPEG4EncoderParameters(const sp<MetaData>& meta) {
 
     CHECK_EQ(setupBitRate(bitRate), OK);
     CHECK_EQ(setupErrorCorrectionParameters(), OK);
+
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+     //OMX_VIDEO_PARAM_MOTIONVECTORTYPE Settings
+    OMX_VIDEO_PARAM_MOTIONVECTORTYPE MotionVector;
+    OMX_VIDEO_PARAM_INTRAREFRESHTYPE RefreshParam;
+    InitOMXParams(&MotionVector);
+    MotionVector.nPortIndex = kPortIndexOutput;
+
+    err = mOMX->getParameter(
+            mNode, OMX_IndexParamVideoMotionVector, &MotionVector,sizeof(MotionVector));
+
+    MotionVector.nPortIndex = kPortIndexOutput;
+
+    // extra parameters - hardcoded
+    MotionVector.sXSearchRange = 16;
+    MotionVector.sYSearchRange = 16;
+    MotionVector.bFourMV =  OMX_FALSE;
+    MotionVector.eAccuracy =  OMX_Video_MotionVectorHalfPel ;
+    MotionVector.bUnrestrictedMVs = OMX_TRUE;
+
+    err = mOMX->setParameter(
+            mNode, OMX_IndexParamVideoMotionVector, &MotionVector,sizeof(MotionVector));
+
+    //OMX_VIDEO_PARAM_INTRAREFRESHTYPE Settings
+     InitOMXParams(&RefreshParam);
+    RefreshParam.nPortIndex = kPortIndexOutput;
+
+    err = mOMX->getParameter(
+            mNode, OMX_IndexParamVideoIntraRefresh, &RefreshParam,sizeof(RefreshParam));
+
+    // extra parameters - hardcoded based on PV defaults
+    RefreshParam.nPortIndex = kPortIndexOutput;
+    RefreshParam.eRefreshMode = OMX_VIDEO_IntraRefreshBoth;
+
+    if(((width >= 640) || (height >= 480)) && (frameRate > 15) && (bitRate > 2000000))
+    {
+        RefreshParam.nAirRef = 0;
+    }
+
+    err = mOMX->setParameter(mNode, OMX_IndexParamVideoIntraRefresh, &RefreshParam,sizeof(RefreshParam));
+#endif
 
     return OK;
 }
