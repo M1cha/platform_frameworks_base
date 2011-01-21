@@ -37,9 +37,14 @@ struct CameraSourceListener : public CameraListener {
 
     virtual void notify(int32_t msgType, int32_t ext1, int32_t ext2);
     virtual void postData(int32_t msgType, const sp<IMemory> &dataPtr);
-
+#ifdef OMAP_ENHANCEMENT
+    virtual void postDataTimestamp(
+            nsecs_t timestamp, int32_t msgType, const sp<IMemory>& dataPtr,
+            uint32_t offset=0, uint32_t stride=0);
+#else
     virtual void postDataTimestamp(
             nsecs_t timestamp, int32_t msgType, const sp<IMemory>& dataPtr);
+#endif
 
 protected:
     virtual ~CameraSourceListener();
@@ -67,12 +72,23 @@ void CameraSourceListener::postData(int32_t msgType, const sp<IMemory> &dataPtr)
          msgType, dataPtr->pointer(), dataPtr->size());
 }
 
+#ifdef OMAP_ENHANCEMENT
 void CameraSourceListener::postDataTimestamp(
-        nsecs_t timestamp, int32_t msgType, const sp<IMemory>& dataPtr) {
+        nsecs_t timestamp, int32_t msgType, const sp<IMemory>& dataPtr,
+        uint32_t offset, uint32_t stride)
+#else
+void CameraSourceListener::postDataTimestamp(
+        nsecs_t timestamp, int32_t msgType, const sp<IMemory>& dataPtr)
+#endif
+{
 
     sp<CameraSource> source = mSource.promote();
     if (source.get() != NULL) {
+#ifdef OMAP_ENHANCEMENT
+        source->dataCallbackTimestamp(timestamp/1000, msgType, dataPtr, offset, stride);
+#else
         source->dataCallbackTimestamp(timestamp/1000, msgType, dataPtr);
+#endif
     }
 }
 
@@ -324,8 +340,15 @@ status_t CameraSource::read(
     return OK;
 }
 
+#ifdef OMAP_ENHANCEMENT
 void CameraSource::dataCallbackTimestamp(int64_t timestampUs,
-        int32_t msgType, const sp<IMemory> &data) {
+        int32_t msgType, const sp<IMemory> &data,
+        uint32_t offset, uint32_t stride)
+#else
+void CameraSource::dataCallbackTimestamp(int64_t timestampUs,
+        int32_t msgType, const sp<IMemory> &data)
+#endif
+{
     LOGV("dataCallbackTimestamp: timestamp %lld us", timestampUs);
     Mutex::Autolock autoLock(mLock);
     if (!mStarted) {

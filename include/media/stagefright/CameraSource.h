@@ -73,8 +73,14 @@ private:
 
     CameraSource(const sp<Camera> &camera);
 
+#ifdef OMAP_ENHANCEMENT
+    void dataCallbackTimestamp(
+            int64_t timestampUs, int32_t msgType, const sp<IMemory> &data,
+            uint32_t offset=0, uint32_t stride=0);
+#else
     void dataCallbackTimestamp(
             int64_t timestampUs, int32_t msgType, const sp<IMemory> &data);
+#endif
 
     void releaseQueuedFrames();
     void releaseOneRecordingFrame(const sp<IMemory>& frame);
