@@ -1675,6 +1675,10 @@ status_t OMXCodec::setupMPEG4EncoderParameters(const sp<MetaData>& meta) {
 
 status_t OMXCodec::setupAVCEncoderParameters(const sp<MetaData>& meta) {
     int32_t iFramesInterval, frameRate, bitRate;
+
+#if defined (TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+    OMX_VIDEO_PARAM_VBSMCTYPE VbsmcType;
+#endif
     bool success = meta->findInt32(kKeyBitRate, &bitRate);
     success = success && meta->findInt32(kKeySampleRate, &frameRate);
     success = success && meta->findInt32(kKeyIFramesInterval, &iFramesInterval);
@@ -1692,8 +1696,22 @@ status_t OMXCodec::setupAVCEncoderParameters(const sp<MetaData>& meta) {
         OMX_VIDEO_PictureTypeI | OMX_VIDEO_PictureTypeP;
 
     h264type.nSliceHeaderSpacing = 0;
+
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    h264type.nBFrames = 0; //OMX_NUM_B_FRAMES;   // No B frames support yet
+    h264type.nPFrames = setPFramesSpacing(iFramesInterval, frameRate) - 1;
+    int32_t remainder = h264type.nPFrames % (OMX_NUM_B_FRAMES + 1);
+    if(remainder)
+    {
+        //LOGD("h264type.nPFrames=%d", h264type.nPFrames);
+        //h264type.nPFrames = h264type.nPFrames - remainder;
+        //LOGD("adjusted to h264type.nPFrames=%d", h264type.nPFrames);
+    }
+#else
     h264type.nBFrames = 0;   // No B frames support yet
     h264type.nPFrames = setPFramesSpacing(iFramesInterval, frameRate);
+#endif
+
     if (h264type.nPFrames == 0) {
         h264type.nAllowedPictureTypes = OMX_VIDEO_PictureTypeI;
     }
@@ -1704,16 +1722,34 @@ status_t OMXCodec::setupAVCEncoderParameters(const sp<MetaData>& meta) {
     defaultProfileLevel.mLevel = h264type.eLevel;
     err = getVideoProfileLevel(meta, defaultProfileLevel, profileLevel);
     if (err != OK) return err;
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    h264type.eProfile = OMX_VIDEO_AVCProfileMain;
+    h264type.eLevel = OMX_VIDEO_AVCLevel4;
+    LOGV("h264type.eProfile=%d, h264type.eLevel=%d", h264type.eProfile, h264type.eLevel);
+#else
     h264type.eProfile = static_cast<OMX_VIDEO_AVCPROFILETYPE>(profileLevel.mProfile);
     h264type.eLevel = static_cast<OMX_VIDEO_AVCLEVELTYPE>(profileLevel.mLevel);
+#endif
 
-    if (h264type.eProfile == OMX_VIDEO_AVCProfileBaseline) {
+    if (h264type.eProfile == OMX_VIDEO_AVCProfileBaseline
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+       || h264type.eProfile == OMX_VIDEO_AVCProfileMain
+       || h264type.eProfile == OMX_VIDEO_AVCProfileHigh
+#endif
+       ) {
         h264type.bUseHadamard = OMX_TRUE;
         h264type.nRefFrames = 1;
         h264type.nRefIdx10ActiveMinus1 = 0;
         h264type.nRefIdx11ActiveMinus1 = 0;
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+        h264type.bEntropyCodingCABAC = OMX_TRUE;
+#else
         h264type.bEntropyCodingCABAC = OMX_FALSE;
+#endif
         h264type.bWeightedPPrediction = OMX_FALSE;
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+        h264type.nWeightedBipredicitonMode = OMX_FALSE;
+#endif
         h264type.bconstIpred = OMX_FALSE;
         h264type.bDirect8x8Inference = OMX_FALSE;
         h264type.bDirectSpatialTemporal = OMX_FALSE;
@@ -1737,6 +1773,60 @@ status_t OMXCodec::setupAVCEncoderParameters(const sp<MetaData>& meta) {
     CHECK_EQ(err, OK);
 
     CHECK_EQ(setupBitRate(bitRate), OK);
+
+#if defined (TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+    //OMX_IndexParamVideoMotionVector+
+    OMX_VIDEO_PARAM_MOTIONVECTORTYPE MotionVector;
+    InitOMXParams(&MotionVector);
+    MotionVector.nPortIndex = kPortIndexOutput;
+
+    err = mOMX->getParameter(mNode, OMX_IndexParamVideoMotionVector, &MotionVector, sizeof(MotionVector));
+    CHECK_EQ(err, OK);
+
+    // extra parameters - hardcoded
+    MotionVector.sXSearchRange = 16;
+    MotionVector.sYSearchRange = 16;
+    MotionVector.sXSearchRange = 144; // Set Horizontal search range to 144
+    MotionVector.sYSearchRange = 32; // Set Vertical search range to 32
+    MotionVector.bFourMV =  OMX_FALSE;
+    MotionVector.eAccuracy = OMX_Video_MotionVectorQuarterPel; // hardcoded
+    MotionVector.bUnrestrictedMVs = OMX_TRUE;
+
+    err = mOMX->setParameter(mNode, OMX_IndexParamVideoMotionVector, &MotionVector, sizeof(MotionVector));
+    CHECK_EQ(err, OK);
+
+    //OMX_IndexParamVideoIntraRefresh+
+    OMX_VIDEO_PARAM_INTRAREFRESHTYPE RefreshParam;
+    InitOMXParams(&RefreshParam);
+    RefreshParam.nPortIndex = kPortIndexOutput;
+
+    err = mOMX->getParameter(mNode, OMX_IndexParamVideoIntraRefresh, &RefreshParam, sizeof(RefreshParam));
+    CHECK_EQ(err, OK);
+
+    // extra parameters - hardcoded
+    RefreshParam.nPortIndex = kPortIndexOutput;
+    RefreshParam.eRefreshMode = OMX_VIDEO_IntraRefreshMax;//OMX_VIDEO_IntraRefreshBoth;
+    RefreshParam.nCirMBs = 0; //TO DO: need to confirm again.
+
+    err = mOMX->setParameter(mNode, OMX_IndexParamVideoIntraRefresh, &RefreshParam, sizeof(RefreshParam));
+    CHECK_EQ(err, OK);
+
+    //OMX_TI_IndexParamVideoEncoderPreset+
+    CHECK_EQ(setupEncoderPresetParams(), OK);
+
+    //OMX_IndexParamVideoVBSMC+
+    InitOMXParams(&VbsmcType);
+    VbsmcType.nPortIndex = kPortIndexOutput;
+
+    err = mOMX->getParameter(mNode, OMX_IndexParamVideoVBSMC, &VbsmcType,sizeof(VbsmcType));
+    CHECK_EQ(err, OK);
+
+    VbsmcType.b16x16 = OMX_TRUE;
+    VbsmcType.b16x8 = VbsmcType.b8x16 = VbsmcType.b8x8 = VbsmcType.b8x4 = VbsmcType.b4x8 = VbsmcType.b4x4 = OMX_FALSE;
+
+    err =mOMX->setParameter(mNode, OMX_IndexParamVideoVBSMC, &VbsmcType,sizeof(VbsmcType));
+    CHECK_EQ(err, OK);
+#endif
 
     return OK;
 }
