@@ -1568,12 +1568,55 @@ status_t OMXCodec::setupH263EncoderParameters(const sp<MetaData>& meta) {
     h263type.nPictureHeaderRepetition = 0;
     h263type.nGOBHeaderInterval = 0;
 
+#if defined (TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+    h263type.eProfile = OMX_VIDEO_H263ProfileBaseline;
+    h263type.eLevel =  OMX_VIDEO_H263Level70;
+#endif
+
     err = mOMX->setParameter(
             mNode, OMX_IndexParamVideoH263, &h263type, sizeof(h263type));
     CHECK_EQ(err, OK);
 
     CHECK_EQ(setupBitRate(bitRate), OK);
     CHECK_EQ(setupErrorCorrectionParameters(), OK);
+#if defined (TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+    CHECK_EQ(setupEncoderPresetParams(), OK);
+
+     //OMX_VIDEO_PARAM_MOTIONVECTORTYPE Settings
+    OMX_VIDEO_PARAM_MOTIONVECTORTYPE MotionVector;
+    OMX_VIDEO_PARAM_INTRAREFRESHTYPE RefreshParam;
+    InitOMXParams(&MotionVector);
+    MotionVector.nPortIndex = kPortIndexOutput;
+
+    err = mOMX->getParameter(
+            mNode, OMX_IndexParamVideoMotionVector, &MotionVector,sizeof(MotionVector));
+
+    MotionVector.nPortIndex = kPortIndexOutput;
+
+    // extra parameters - hardcoded
+    MotionVector.sXSearchRange = 16;
+    MotionVector.sYSearchRange = 16;
+    MotionVector.bFourMV =  OMX_FALSE;
+    MotionVector.eAccuracy =  OMX_Video_MotionVectorHalfPel ;
+    MotionVector.bUnrestrictedMVs = OMX_TRUE;
+
+    err = mOMX->setParameter(
+            mNode, OMX_IndexParamVideoMotionVector, &MotionVector,sizeof(MotionVector));
+
+    //OMX_VIDEO_PARAM_INTRAREFRESHTYPE Settings
+     InitOMXParams(&RefreshParam);
+    RefreshParam.nPortIndex = kPortIndexOutput;
+
+    err = mOMX->getParameter(
+            mNode, OMX_IndexParamVideoIntraRefresh, &RefreshParam,sizeof(RefreshParam));
+
+    // extra parameters - hardcoded based on PV defaults
+    RefreshParam.nPortIndex = kPortIndexOutput;
+    RefreshParam.eRefreshMode = OMX_VIDEO_IntraRefreshBoth;
+    //RefreshParam.nCirMBs = 0;
+
+    err = mOMX->setParameter(mNode, OMX_IndexParamVideoIntraRefresh, &RefreshParam,sizeof(RefreshParam));
+#endif
 
     return OK;
 }
