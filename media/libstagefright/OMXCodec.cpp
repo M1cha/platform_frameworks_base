@@ -62,6 +62,8 @@
 #ifdef TARGET_OMAP4
 #include <cutils/properties.h>
 #include "OMX_TI_Index.h"
+#include "OMX_TI_Common.h"
+#include "OMX_TI_Video.h"
 #endif
 
 /**
@@ -96,19 +98,11 @@ static int Calculate_TotalRefFrames(int nWidth, int nHeight) {
 
     return (ref_frames + 3 + 2*NUM_BUFFERS_TO_BE_QUEUED_FOR_OPTIMAL_PERFORMANCE);
 }
+
 #if defined NPA_BUFFERS
 #define OMX_BUFFERHEADERFLAG_MODIFIED 0x00000100
-#define OMX_TI_IndexParamBufferPreAnnouncement 0x7F000055
 #define THUMBNAIL_BUFFERS_NPA_MODE 2
 #define NPA_BUFFER_SIZE 4
-typedef struct OMX_TI_PARAM_BUFFERPREANNOUNCE
-{
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
-    OMX_U32 nPortIndex;
-    OMX_BOOL bEnabled;
-}OMX_TI_PARAM_BUFFERPREANNOUNCE;
-
 #endif
 
 #endif
