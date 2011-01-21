@@ -39,6 +39,10 @@ import android.widget.MediaController.MediaPlayerControl;
 import java.io.IOException;
 import java.util.Map;
 
+/* TI FM UI port -start */
+import android.os.SystemProperties;
+/* TI FM UI port -stop */
+
 /**
  * Displays a video file.  The VideoView class
  * can load images from various sources (such as resources or content
@@ -209,7 +213,14 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
         Intent i = new Intent("com.android.music.musicservicecommand");
         i.putExtra("command", "pause");
         mContext.sendBroadcast(i);
-
+        /* TI FM UI port -start */
+        if (SystemProperties.OMAP_ENHANCEMENT) {
+             // Tell the FM playback service to pause,as the video playback will start.
+             // TODO: these constants need to be published somewhere in the framework.
+             Intent fm = new Intent("com.ti.server.fmpausecmd");
+             mContext.sendBroadcast(fm);
+        }
+        /* TI FM UI port -stop */
         // we shouldn't clear the target state, because somebody might have
         // called start() previously
         release(false);
