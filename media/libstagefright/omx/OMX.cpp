@@ -289,6 +289,15 @@ status_t OMX::setConfig(
             index, params, size);
 }
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+status_t OMX::useBuffer(
+        node_id node, OMX_U32 port_index, const sp<IMemory> &params,
+        buffer_id *buffer, size_t size) {
+    return findInstance(node)->useBuffer(
+            port_index, params, buffer, size);
+}
+#endif
+
 status_t OMX::useBuffer(
         node_id node, OMX_U32 port_index, const sp<IMemory> &params,
         buffer_id *buffer) {

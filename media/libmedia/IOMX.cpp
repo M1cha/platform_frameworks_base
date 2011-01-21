@@ -237,14 +237,31 @@ public:
         return reply.readInt32();
     }
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
     virtual status_t useBuffer(
             node_id node, OMX_U32 port_index, const sp<IMemory> &params,
             buffer_id *buffer) {
+        return useBuffer(node, port_index, params, buffer, 0);
+    }
+#endif
+
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    virtual status_t useBuffer(
+            node_id node, OMX_U32 port_index, const sp<IMemory> &params,
+            buffer_id *buffer, size_t size) {
+#else
+    virtual status_t useBuffer(
+            node_id node, OMX_U32 port_index, const sp<IMemory> &params,
+            buffer_id *buffer) {
+#endif
         Parcel data, reply;
         data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
         data.writeIntPtr((intptr_t)node);
         data.writeInt32(port_index);
         data.writeStrongBinder(params->asBinder());
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+        data.writeInt32(size);
+#endif
         remote()->transact(USE_BUFFER, data, &reply);
 
         status_t err = reply.readInt32();
@@ -601,7 +618,12 @@ status_t BnOMX::onTransact(
                 interface_cast<IMemory>(data.readStrongBinder());
 
             buffer_id buffer;
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+            OMX_U32 size = data.readInt32();
+            status_t err = useBuffer(node, port_index, params, &buffer, size);
+#else
             status_t err = useBuffer(node, port_index, params, &buffer);
+#endif
             reply->writeInt32(err);
 
             if (err == OK) {

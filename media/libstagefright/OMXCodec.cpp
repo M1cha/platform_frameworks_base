@@ -2327,7 +2327,20 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
                         mNode, portIndex, mem, &buffer);
             }
         } else {
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+            if((!strcmp(mComponentName,"OMX.TI.DUCATI1.VIDEO.H264E")
+               || !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E"))
+               && (portIndex == kPortIndexInput)
+               && !(mQuirks & kRequiresAllocateBufferOnInputPorts) ){
+                sp<IMemory> tempmem = mem;
+                tempmem.clear();
+                err = mOMX->useBuffer(mNode, portIndex, tempmem, &buffer, mem->size());
+            } else {
+                err = mOMX->useBuffer(mNode, portIndex, mem, &buffer, mem->size());
+            }
+#else
             err = mOMX->useBuffer(mNode, portIndex, mem, &buffer);
+#endif
         }
 
         if (err != OK) {

@@ -78,6 +78,12 @@ public:
             node_id node, OMX_INDEXTYPE index,
             const void *params, size_t size) = 0;
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    virtual status_t useBuffer(
+            node_id node, OMX_U32 port_index, const sp<IMemory> &params,
+            buffer_id *buffer, size_t size) = 0;
+#endif
+
     virtual status_t useBuffer(
             node_id node, OMX_U32 port_index, const sp<IMemory> &params,
             buffer_id *buffer) = 0;
