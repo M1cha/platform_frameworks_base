@@ -1471,8 +1471,13 @@ status_t MPEG4Writer::Track::parseAVCCodecSpecificData(
     {
         // Check on the profiles
         // These profiles requires additional parameter set extensions
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+
+        if (mProfileIdc == 110 || mProfileIdc == 122 || mProfileIdc == 144) {
+#else
         if (mProfileIdc == 100 || mProfileIdc == 110 ||
             mProfileIdc == 122 || mProfileIdc == 144) {
+#endif
             LOGE("Sorry, no support for profile_idc: %d!", mProfileIdc);
             return BAD_VALUE;
         }
