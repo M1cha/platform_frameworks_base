@@ -201,6 +201,10 @@ private:
     void setVideoInputFormat(
             const char *mime, const sp<MetaData>& meta);
 
+#if defined (TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+    status_t setupEncoderPresetParams();
+#endif
+
     status_t setupBitRate(int32_t bitRate);
     status_t setupErrorCorrectionParameters();
     status_t setupH263EncoderParameters(const sp<MetaData>& meta);

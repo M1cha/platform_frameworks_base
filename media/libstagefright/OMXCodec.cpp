@@ -105,6 +105,12 @@ static int Calculate_TotalRefFrames(int nWidth, int nHeight) {
 #define NPA_BUFFER_SIZE 4
 #endif
 
+#ifdef TARGET_OMAP4
+#define OMX_NUM_B_FRAMES 0
+#define OUTPUT_BUFFER_COUNT 2
+#define INPUT_BUFFER_COUNT 2
+#endif
+
 #endif
 
 namespace android {
@@ -224,9 +230,9 @@ static const CodecInfo kDecoderInfo[] = {
 static const CodecInfo kEncoderInfo[] = {
     { MEDIA_MIMETYPE_AUDIO_AMR_NB, "AMRNBEncoder" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "AACEncoder" },
-    { MEDIA_MIMETYPE_VIDEO_MPEG4, "M4vH263Encoder" },
-    { MEDIA_MIMETYPE_VIDEO_H263, "M4vH263Encoder" },
-    { MEDIA_MIMETYPE_VIDEO_AVC, "AVCEncoder" },
+    { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.TI.DUCATI1.VIDEO.MPEG4E" },
+    { MEDIA_MIMETYPE_VIDEO_H263, "OMX.TI.DUCATI1.VIDEO.MPEG4E" },
+    { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.DUCATI1.VIDEO.H264E" },
 };
 #else
 static const CodecInfo kDecoderInfo[] = {
@@ -532,7 +538,7 @@ uint32_t OMXCodec::getComponentQuirks(
         quirks |= kRequiresAllocateBufferOnOutputPorts;
         quirks |= kDefersOutputBufferAllocation;
     }
-    #ifdef OMAP_ENHANCEMENT
+#ifdef OMAP_ENHANCEMENT
     if (!strcmp(componentName, "OMX.TI.Video.Decoder") ||
             !strcmp(componentName, "OMX.TI.720P.Decoder")) {
         // TI Video Decoder and TI 720p Decoder must use buffers allocated
@@ -578,11 +584,20 @@ uint32_t OMXCodec::getComponentQuirks(
         // "(I) may have unexpected problem (sic) which can be timing related
         //  and hard to reproduce."
 
+#if defined(OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+        if (!strncmp(componentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E", strlen("OMX.TI.DUCATI1.VIDEO.MPEG4E")) ||
+           !strncmp(componentName, "OMX.TI.DUCATI1.VIDEO.H264E", strlen("OMX.TI.DUCATI1.VIDEO.H264E"))) {
+            LOGV("USING DUCATI ENCODER. isEncoder : %d",isEncoder);
+            quirks |= kRequiresAllocateBufferOnOutputPorts;
+            quirks |= kAvoidMemcopyInputRecordingFrames;
+        }
+#else
         quirks |= kRequiresAllocateBufferOnInputPorts;
         quirks |= kRequiresAllocateBufferOnOutputPorts;
         if (!strncmp(componentName, "OMX.TI.Video.encoder", 20)) {
             quirks |= kAvoidMemcopyInputRecordingFrames;
         }
+#endif
     }
 #ifndef OMAP_ENHANCEMENT
     if (!strcmp(componentName, "OMX.TI.Video.Decoder")) {
@@ -753,7 +768,9 @@ uint32_t quirks = getComponentQuirks(componentName, createEncoder, flags);
 }
 
 status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
+#if !(defined(OMAP_ENHANCEMENT) && defined (TARGET_OMAP4))
     if (!(flags & kIgnoreCodecSpecificData)) {
+#endif
         uint32_t type;
         const void *data;
         size_t size;
@@ -841,22 +858,24 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
                 LOGE("Profile and/or level exceed the decoder's capabilities.");
                 return ERROR_UNSUPPORTED;
             }
-   #ifdef OMAP_ENHANCEMENT
-        int32_t width, height;
-        bool success = meta->findInt32(kKeyWidth, &width);
-        success = success && meta->findInt32(kKeyHeight, &height);
-        CHECK(success);
-        if (!strcmp(mComponentName, "OMX.TI.720P.Decoder")
-            && (profile == kAVCProfileBaseline && level <= 39)
-            && (width*height < MAX_RESOLUTION)) {
-            // Though this decoder can handle this profile/level,
-            // we prefer to use "OMX.TI.Video.Decoder" for
-            // Baseline Profile with level <=39 and sub 720p
-            return ERROR_UNSUPPORTED;
+#ifdef OMAP_ENHANCEMENT
+            int32_t width, height;
+            bool success = meta->findInt32(kKeyWidth, &width);
+            success = success && meta->findInt32(kKeyHeight, &height);
+            CHECK(success);
+            if (!strcmp(mComponentName, "OMX.TI.720P.Decoder")
+                && (profile == kAVCProfileBaseline && level <= 39)
+                && (width*height < MAX_RESOLUTION)) {
+                // Though this decoder can handle this profile/level,
+                // we prefer to use "OMX.TI.Video.Decoder" for
+                // Baseline Profile with level <=39 and sub 720p
+                return ERROR_UNSUPPORTED;
             }
 #endif
         }
+#if !(defined(OMAP_ENHANCEMENT) && defined (TARGET_OMAP4))
     }
+#endif
 
     int32_t bitRate = 0;
     if (mIsEncoder) {
@@ -874,7 +893,7 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
         CHECK(meta->findInt32(kKeySampleRate, &sampleRate));
 
         setAACFormat(numChannels, sampleRate, bitRate);
-   #ifdef OMAP_ENHANCEMENT
+#ifdef OMAP_ENHANCEMENT
         // Configure TI OMX component to FrameMode for AAC-ADTS
         if (!strcmp(mComponentName, "OMX.TI.AAC.decode")) {
             OMX_INDEXTYPE index;
@@ -1123,6 +1142,11 @@ static size_t getFrameSize(
         case OMX_COLOR_FormatYUV420SemiPlanar:
             return (width * height * 3) / 2;
 
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+        case OMX_COLOR_FormatYUV420PackedSemiPlanar:
+            return (4096 * height *3)/2;
+#endif
+
         default:
             CHECK(!"Should not be here. Unsupported color format.");
             break;
@@ -1241,7 +1265,20 @@ void OMXCodec::setVideoInputFormat(
     video_def->nFrameWidth = width;
     video_def->nFrameHeight = height;
     video_def->nStride = stride;
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    if( !strcmp(mComponentName,"OMX.TI.DUCATI1.VIDEO.H264E")
+        || !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E")){
+        video_def->nStride = 4096; // TI 2D-Buffer specific Hardcoding
+    }
+
+    def.nBufferCountActual = INPUT_BUFFER_COUNT;
+    if(!strcmp(mComponentName,"OMX.TI.DUCATI1.VIDEO.H264E"))
+    {
+        def.nBufferCountActual = 2; //OMX_NUM_B_FRAMES + 1;;
+    }
+#else
     video_def->nSliceHeight = sliceHeight;
+#endif
     video_def->xFramerate = (frameRate << 16);  // Q16 format
     video_def->eCompressionFormat = OMX_VIDEO_CodingUnused;
     video_def->eColorFormat = colorFormat;
@@ -1265,7 +1302,11 @@ void OMXCodec::setVideoInputFormat(
 
     video_def->nFrameWidth = width;
     video_def->nFrameHeight = height;
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    video_def->xFramerate = (frameRate << 16);  // Q16 format; // No need for output port
+#else
     video_def->xFramerate = 0;      // No need for output port
+#endif
     video_def->nBitrate = bitRate;  // Q16 format
     video_def->eCompressionFormat = compressionFormat;
     video_def->eColorFormat = OMX_COLOR_FormatUnused;
@@ -1274,9 +1315,39 @@ void OMXCodec::setVideoInputFormat(
         def.nBufferSize = ((def.nBufferSize * 3) >> 1);
     }
 
+#ifdef TARGET_OMAP4
+    def.nBufferCountActual = OUTPUT_BUFFER_COUNT;
+#endif
     err = mOMX->setParameter(
             mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
     CHECK_EQ(err, OK);
+
+#if defined (TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+    if( !strcmp(mComponentName,"OMX.TI.DUCATI1.VIDEO.H264E")
+        || !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E")){
+
+        //OMX_TI_IndexParam2DBufferAllocDimension
+        OMX_CONFIG_RECTTYPE tFrameDim;
+        tFrameDim.nPortIndex = kPortIndexInput;
+        tFrameDim.nWidth =  width;
+        tFrameDim.nHeight = height;
+        InitOMXParams(&tFrameDim);
+
+        err = mOMX->setParameter( mNode, (OMX_INDEXTYPE)OMX_TI_IndexParam2DBufferAllocDimension, &tFrameDim, sizeof(tFrameDim));
+            CHECK_EQ(err, OK);
+
+        //OMX_TI_IndexParamBufferPreAnnouncement
+        OMX_TI_PARAM_BUFFERPREANNOUNCE PreAnnouncement;
+        InitOMXParams(&PreAnnouncement);
+        PreAnnouncement.nPortIndex = kPortIndexInput;
+        err = mOMX->getParameter( mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamBufferPreAnnouncement, &PreAnnouncement, sizeof(PreAnnouncement));
+        CHECK_EQ(err, OK);
+
+        PreAnnouncement.bEnabled = OMX_FALSE;
+        err = mOMX->setParameter( mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamBufferPreAnnouncement, &PreAnnouncement,sizeof(PreAnnouncement));
+        CHECK_EQ(err, OK);
+    }
+#endif
 
     /////////////////// Codec-specific ////////////////////////
     switch (compressionFormat) {
@@ -1327,8 +1398,13 @@ status_t OMXCodec::setupErrorCorrectionParameters() {
     }
 
     errorCorrectionType.bEnableHEC = OMX_FALSE;
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    errorCorrectionType.bEnableResync = OMX_FALSE;
+    errorCorrectionType.nResynchMarkerSpacing = 0;
+#else
     errorCorrectionType.bEnableResync = OMX_TRUE;
     errorCorrectionType.nResynchMarkerSpacing = 256;
+#endif
     errorCorrectionType.bEnableDataPartitioning = OMX_FALSE;
     errorCorrectionType.bEnableRVLC = OMX_FALSE;
 
@@ -1353,7 +1429,19 @@ status_t OMXCodec::setupBitRate(int32_t bitRate) {
             &bitrateType, sizeof(bitrateType));
     CHECK_EQ(err, OK);
 
+#if defined (TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+    if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.H264E"))
+    {
+        bitrateType.eControlRate = OMX_Video_ControlRateVariable;
+    }
+    else if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E"))
+    {
+        bitrateType.eControlRate = OMX_Video_ControlRateVariable;
+    }
+#else
     bitrateType.eControlRate = OMX_Video_ControlRateVariable;
+#endif
+
     bitrateType.nTargetBitrate = bitRate;
 
     err = mOMX->setParameter(
@@ -1362,6 +1450,37 @@ status_t OMXCodec::setupBitRate(int32_t bitRate) {
     CHECK_EQ(err, OK);
     return OK;
 }
+
+#if defined (TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+status_t OMXCodec::setupEncoderPresetParams() {
+    OMX_VIDEO_PARAM_ENCODER_PRESETTYPE EncoderPreset;
+    status_t Err = OK;
+
+    /*Encoder Preset settings*/
+    InitOMXParams(&EncoderPreset);
+    EncoderPreset.nPortIndex = kPortIndexOutput;
+    Err = mOMX->getParameter(mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoEncoderPreset, &EncoderPreset,sizeof(EncoderPreset));
+    CHECK_EQ(Err, OK);
+
+    if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.H264E"))
+    {
+//#ifdef FOURMV_ENABLED
+        EncoderPreset.eEncodingModePreset = OMX_Video_Enc_Med_Speed_High_Quality ;
+        EncoderPreset.eRateControlPreset= OMX_Video_RC_Storage ; //mpeg4VencClient->encoderPreset.eRateControlPreset;  // 4
+//#endif
+    }
+    else if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E"))
+    {
+        EncoderPreset.eEncodingModePreset = OMX_Video_Enc_User_Defined; // mpeg4VencClient->encoderPreset.eEncodingModePreset; // 2
+        EncoderPreset.eRateControlPreset= OMX_Video_RC_Storage ; //mpeg4VencClient->encoderPreset.eRateControlPreset;  // 4
+    }
+
+    Err = mOMX->setParameter(mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoEncoderPreset, &EncoderPreset,sizeof(EncoderPreset));
+    CHECK_EQ(Err, OK);
+
+    return Err;
+}
+#endif
 
 status_t OMXCodec::getVideoProfileLevel(
         const sp<MetaData>& meta,
@@ -2927,6 +3046,11 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
             CHECK(mOMXLivesLocally && offset == 0);
             OMX_BUFFERHEADERTYPE *header = (OMX_BUFFERHEADERTYPE *) info->mBuffer;
             header->pBuffer = (OMX_U8 *) srcBuffer->data() + srcBuffer->range_offset();
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+            //closed loop.
+            releaseBuffer = false;
+            info->mMediaBuffer = srcBuffer;
+#endif
         } else {
             if (mQuirks & kStoreMetaDataInInputVideoBuffers) {
                 releaseBuffer = false;
@@ -2976,6 +3100,15 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
     {
         CODEC_LOGV("Sending eos flag");
         flags |= OMX_BUFFERFLAG_EOS;
+    }
+#endif
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+
+    if(!strcmp(mComponentName,"OMX.TI.DUCATI1.VIDEO.H264E")
+       || !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E"))
+    {
+        flags |= OMX_BUFFERFLAG_SYNCFRAME;
+        flags |= OMX_BUFFERHEADERFLAG_MODIFIED;
     }
 #endif
 
