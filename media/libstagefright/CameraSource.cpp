@@ -98,7 +98,11 @@ static int32_t getColorFormat(const char* colorFormat) {
     }
 
     if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV420SP)) {
+#if defined(TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+        return OMX_COLOR_FormatYUV420PackedSemiPlanar;
+#else
         return OMX_COLOR_FormatYUV420SemiPlanar;
+#endif
     }
 
     if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV422I)) {
