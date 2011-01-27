@@ -71,9 +71,10 @@ private:
  * In fact this is an implementation of ANativeWindow on top of
  * the framebuffer.
  * 
- * Currently it is pretty simple, it manages only two buffers (the front and 
- * back buffer).
- * 
+ * This implementation is able to manage any number of buffers,
+ * defined by NUM_FRAME_BUFFERS (currently set to 2: front
+ * and back buffer)
+ *
  */
 
 FramebufferNativeWindow::FramebufferNativeWindow() 
@@ -83,6 +84,9 @@ FramebufferNativeWindow::FramebufferNativeWindow()
     if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &module) == 0) {
         int stride;
         int err;
+#ifdef OMAP_ENHANCEMENT
+        int i;
+#endif
         err = framebuffer_open(module, &fbDev);
         LOGE_IF(err, "couldn't open framebuffer HAL (%s)", strerror(-err));
         
@@ -96,9 +100,36 @@ FramebufferNativeWindow::FramebufferNativeWindow()
         mUpdateOnDemand = (fbDev->setUpdateRect != 0);
         
         // initialize the buffer FIFO
+#ifdef OMAP_ENHANCEMENT
+        mNumBuffers = NUM_FRAME_BUFFERS;
+        mNumFreeBuffers = NUM_FRAME_BUFFERS;
+#else
         mNumBuffers = 2;
         mNumFreeBuffers = 2;
+#endif
         mBufferHead = mNumBuffers-1;
+#ifdef OMAP_ENHANCEMENT
+        for(i = 0; i < NUM_FRAME_BUFFERS; i++){
+            buffers[i] = new NativeBuffer(
+                    fbDev->width, fbDev->height, fbDev->format, GRALLOC_USAGE_HW_FB);
+        }
+
+        for(i = 0; i < NUM_FRAME_BUFFERS; i++){
+            err = grDev->alloc(grDev,
+                    fbDev->width, fbDev->height, fbDev->format,
+                    GRALLOC_USAGE_HW_FB, &buffers[i]->handle, &buffers[i]->stride);
+
+            LOGE_IF(err, "fb buffer %d allocation failed w=%d, h=%d, err=%s",
+                    i, fbDev->width, fbDev->height, strerror(-err));
+
+            if(err){
+                mNumBuffers = i;
+                mNumFreeBuffers = i;
+                mBufferHead = mNumBuffers-1;
+                break;
+            }
+       }
+#else
         buffers[0] = new NativeBuffer(
                 fbDev->width, fbDev->height, fbDev->format, GRALLOC_USAGE_HW_FB);
         buffers[1] = new NativeBuffer(
@@ -117,7 +148,7 @@ FramebufferNativeWindow::FramebufferNativeWindow()
 
         LOGE_IF(err, "fb buffer 1 allocation failed w=%d, h=%d, err=%s",
                 fbDev->width, fbDev->height, strerror(-err));
-
+#endif
         const_cast<uint32_t&>(ANativeWindow::flags) = fbDev->flags; 
         const_cast<float&>(ANativeWindow::xdpi) = fbDev->xdpi;
         const_cast<float&>(ANativeWindow::ydpi) = fbDev->ydpi;
@@ -135,10 +166,24 @@ FramebufferNativeWindow::FramebufferNativeWindow()
     ANativeWindow::queueBuffer = queueBuffer;
     ANativeWindow::query = query;
     ANativeWindow::perform = perform;
+#ifdef OMAP_ENHANCEMENT
+    LOGE("%d buffers flip-chain implementation enabled\n", mNumBuffers);
+#endif
 }
 
 FramebufferNativeWindow::~FramebufferNativeWindow() 
 {
+#ifdef OMAP_ENHANCEMENT
+    int i;
+
+   if (grDev){
+        for (i = 0; i < mNumBuffers; i++){
+            if (buffers[i] != NULL)
+                grDev->free(grDev, buffers[i]->handle);
+        }
+        gralloc_close(grDev);
+    }
+#else
     if (grDev) {
         if (buffers[0] != NULL)
             grDev->free(grDev, buffers[0]->handle);
@@ -146,7 +191,7 @@ FramebufferNativeWindow::~FramebufferNativeWindow()
             grDev->free(grDev, buffers[1]->handle);
         gralloc_close(grDev);
     }
-
+#endif
     if (fbDev) {
         framebuffer_close(fbDev);
     }

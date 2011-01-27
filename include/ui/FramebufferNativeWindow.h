@@ -29,6 +29,10 @@
 
 #include <ui/egl/android_natives.h>
 
+#ifdef OMAP_ENHANCEMENT
+/* Define number of buffers */
+#define NUM_FRAME_BUFFERS	2
+#endif
 
 extern "C" EGLNativeWindowType android_createDisplaySurface(void);
 
@@ -72,7 +76,11 @@ private:
     framebuffer_device_t* fbDev;
     alloc_device_t* grDev;
 
+#ifdef OMAP_ENHANCEMENT
+    sp<NativeBuffer> buffers[NUM_FRAME_BUFFERS];
+#else
     sp<NativeBuffer> buffers[2];
+#endif
     sp<NativeBuffer> front;
     
     mutable Mutex mutex;
