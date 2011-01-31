@@ -157,6 +157,13 @@ private:
         void                    handlePreviewData(const sp<IMemory>& mem);
         void                    handlePostview(const sp<IMemory>& mem);
         void                    handleRawPicture(const sp<IMemory>& mem);
+
+#ifdef OMAP_ENHANCEMENT
+
+        void                    handleBurstPicture(const sp<IMemory>& mem);
+
+#endif
+
         void                    handleCompressedPicture(const sp<IMemory>& mem);
         void                    handleGenericNotify(int32_t msgType, int32_t ext1, int32_t ext2);
         void                    handleGenericData(int32_t msgType, const sp<IMemory>& dataPtr);

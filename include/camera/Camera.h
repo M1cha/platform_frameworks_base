@@ -76,6 +76,13 @@ enum {
     CAMERA_MSG_POSTVIEW_FRAME   = 0x040,
     CAMERA_MSG_RAW_IMAGE        = 0x080,
     CAMERA_MSG_COMPRESSED_IMAGE = 0x100,
+
+#ifdef OMAP_ENHANCEMENT
+
+    CAMERA_MSG_BURST_IMAGE      = 0x200,
+
+#endif
+
     CAMERA_MSG_ALL_MSGS         = 0x1FF
 };
 

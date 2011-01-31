@@ -707,6 +707,20 @@ status_t CameraService::Client::startPreviewMode() {
     LOG1("startPreviewMode");
     status_t result = NO_ERROR;
 
+#ifdef OMAP_ENHANCEMENT
+
+    //According to framework documentation, preview should be
+    //restarted after each capture. This will make sure
+    //that image capture related messages get disabled if
+    //not done already in their respective handlers.
+    disableMsgType(CAMERA_MSG_SHUTTER |
+                  CAMERA_MSG_POSTVIEW_FRAME |
+                  CAMERA_MSG_RAW_IMAGE |
+                  CAMERA_MSG_COMPRESSED_IMAGE |
+                  CAMERA_MSG_BURST_IMAGE);
+
+#endif
+
     // if preview has been enabled, nothing needs to be done
     if (mHardware->previewEnabled()) {
         return NO_ERROR;
@@ -844,6 +858,9 @@ status_t CameraService::Client::takePicture() {
     enableMsgType(CAMERA_MSG_SHUTTER |
                   CAMERA_MSG_POSTVIEW_FRAME |
                   CAMERA_MSG_RAW_IMAGE |
+#ifdef OMAP_ENHANCEMENT
+                  CAMERA_MSG_BURST_IMAGE |
+#endif
                   CAMERA_MSG_COMPRESSED_IMAGE);
 
     return mHardware->takePicture();
@@ -1025,6 +1042,15 @@ void CameraService::Client::dataCallback(int32_t msgType,
         case CAMERA_MSG_COMPRESSED_IMAGE:
             client->handleCompressedPicture(dataPtr);
             break;
+
+#ifdef OMAP_ENHANCEMENT
+
+        case CAMERA_MSG_BURST_IMAGE:
+            client->handleBurstPicture(dataPtr);
+            break;
+
+#endif
+
         default:
             client->handleGenericData(msgType, dataPtr);
             break;
@@ -1195,6 +1221,22 @@ void CameraService::Client::handleCompressedPicture(const sp<IMemory>& mem) {
     }
 }
 
+#ifdef OMAP_ENHANCEMENT
+
+// burst callback
+void CameraService::Client::handleBurstPicture(const sp<IMemory>& mem) {
+    //Don't disable this message type yet. In this mode takePicture() will
+    //get called only once. When burst finishes this message will get automatically
+    //disabled in the respective call for restarting the preview.
+
+    sp<ICameraClient> c = mCameraClient;
+    mLock.unlock();
+    if (c != 0) {
+        c->dataCallback(CAMERA_MSG_COMPRESSED_IMAGE, mem);
+    }
+}
+
+#endif
 
 void CameraService::Client::handleGenericNotify(int32_t msgType,
     int32_t ext1, int32_t ext2) {
