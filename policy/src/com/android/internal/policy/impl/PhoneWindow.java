@@ -1192,6 +1192,17 @@ public class PhoneWindow extends Window implements MenuBuilder.Callback {
                         || dispatcher == null) {
                     break;
                 }
+
+                if("true".equals(android.os.SystemProperties.get("com.ti.omap_enhancement"))) {
+                    if ( KeyEvent.KEYCODE_SPACE == event.getScanCode() ) {
+                        Log.v(TAG, "Starting OMAP4 Camera application");
+                        Intent intent = new Intent("android.intent.action.OMAP4_CAMERA_BUTTON",
+                                                  null);
+                        getContext().sendOrderedBroadcast(intent, null);
+                        return true;
+                    }
+                }
+
                 if (event.getRepeatCount() == 0) {
                     dispatcher.startTracking(event, this);
                 } else if (event.isLongPress() && dispatcher.isTracking(event)) {
