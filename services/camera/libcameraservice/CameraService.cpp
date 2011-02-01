@@ -320,6 +320,10 @@ CameraService::Client::Client(const sp<CameraService>& cameraService,
     mOverlayW = 0;
     mOverlayH = 0;
 
+#ifdef OMAP_ENHANCEMENT
+    mS3DOverlay = false;
+#endif
+
     // Callback is disabled by default
     mPreviewCallbackFlag = FRAME_CALLBACK_FLAG_NOOP;
     mOrientation = getOrientation(0, mCameraFacing == CAMERA_FACING_FRONT);
@@ -544,6 +548,8 @@ status_t CameraService::Client::setOverlay() {
     int w, h;
 #ifdef OMAP_ENHANCEMENT
     uint32_t overlayFormat;
+    bool isS3d = false;
+
 #endif
 
     CameraParameters params(mHardware->getParameters());
@@ -574,11 +580,14 @@ status_t CameraService::Client::setOverlay() {
         overlayFormat = OVERLAY_FORMAT_DEFAULT;
     }
 
+    if(params.get("s3d-supported")!= NULL && CameraParameters::TRUE != NULL)
+        isS3d = strcmp(params.get("s3d-supported"), CameraParameters::TRUE) == 0;
 #endif
 
     if (w != mOverlayW || h != mOverlayH || mOrientationChanged
 #ifdef OMAP_ENHANCEMENT
         || ((mOverlayFormat!=NULL) && (strcmp(prevFormat, mOverlayFormat)!=0))
+        || (mS3DOverlay != isS3d)
 #endif
     ) {
         // Force the destruction of any previous overlay
@@ -586,6 +595,9 @@ status_t CameraService::Client::setOverlay() {
         mHardware->setOverlay(dummy);
         mOverlayRef = 0;
         mOrientationChanged = false;
+#ifdef OMAP_ENHANCEMENT
+        mS3DOverlay = isS3d;
+#endif
     }
 
     status_t result = NO_ERROR;
@@ -602,7 +614,7 @@ status_t CameraService::Client::setOverlay() {
             for (int retry = 0; retry < 50; ++retry) {
 #ifdef OMAP_ENHANCEMENT
                 mOverlayRef = mSurface->createOverlay(w, h, overlayFormat,
-                                      mOrientation);
+                                      mOrientation, isS3d);
 #else
                 mOverlayRef = mSurface->createOverlay(w, h, OVERLAY_FORMAT_DEFAULT,
                                       mOrientation);

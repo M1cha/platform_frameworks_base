@@ -24,7 +24,11 @@
 #include <camera/CameraHardwareInterface.h>
 
 /* This needs to be increased if we can have more cameras */
+#ifdef OMAP_ENHANCEMENT
+#define MAX_CAMERAS 3
+#else
 #define MAX_CAMERAS 2
+#endif
 
 #ifdef OMAP_ENHANCEMENT
 #define OVERLAY_FORMAT_BUFFER_SIZE  40
@@ -213,6 +217,7 @@ private:
 
 #ifdef OMAP_ENHANCEMENT
         char                     mOverlayFormat[OVERLAY_FORMAT_BUFFER_SIZE];
+        bool                     mS3DOverlay;
 #endif
 
     };
