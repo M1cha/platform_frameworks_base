@@ -1217,12 +1217,20 @@ void OMXCodec::setVideoInputFormat(
         const char *mime, const sp<MetaData>& meta) {
 
     int32_t width, height, frameRate, bitRate, stride, sliceHeight;
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    int32_t paddedWidth, paddedHeight;
+#endif
     bool success = meta->findInt32(kKeyWidth, &width);
     success = success && meta->findInt32(kKeyHeight, &height);
     success = success && meta->findInt32(kKeySampleRate, &frameRate);
     success = success && meta->findInt32(kKeyBitRate, &bitRate);
     success = success && meta->findInt32(kKeyStride, &stride);
     success = success && meta->findInt32(kKeySliceHeight, &sliceHeight);
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    success = success && meta->findInt32(kKeyPaddedWidth, &paddedWidth);
+    success = success && meta->findInt32(kKeyPaddedHeight, &paddedHeight);
+#endif
+
     CHECK(success);
     CHECK(stride != 0);
 
@@ -1257,8 +1265,13 @@ void OMXCodec::setVideoInputFormat(
             mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
     CHECK_EQ(err, OK);
 
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    def.nBufferSize = getFrameSize(colorFormat,
+            stride > 0? stride: -stride, paddedHeight);
+#else
     def.nBufferSize = getFrameSize(colorFormat,
             stride > 0? stride: -stride, sliceHeight);
+#endif
 
     CHECK_EQ(def.eDomain, OMX_PortDomainVideo);
 
@@ -1322,15 +1335,15 @@ void OMXCodec::setVideoInputFormat(
             mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
     CHECK_EQ(err, OK);
 
-#if defined (TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
     if( !strcmp(mComponentName,"OMX.TI.DUCATI1.VIDEO.H264E")
         || !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E")){
 
         //OMX_TI_IndexParam2DBufferAllocDimension
         OMX_CONFIG_RECTTYPE tFrameDim;
         tFrameDim.nPortIndex = kPortIndexInput;
-        tFrameDim.nWidth =  width;
-        tFrameDim.nHeight = height;
+        tFrameDim.nWidth = paddedWidth;
+        tFrameDim.nHeight = paddedHeight;
         InitOMXParams(&tFrameDim);
 
         err = mOMX->setParameter( mNode, (OMX_INDEXTYPE)OMX_TI_IndexParam2DBufferAllocDimension, &tFrameDim, sizeof(tFrameDim));
