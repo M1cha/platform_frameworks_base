@@ -224,6 +224,7 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.DUCATI1.VIDEO.DECODER" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "AVCDecoder" },
     { MEDIA_MIMETYPE_VIDEO_VPX, "VPXDecoder" },
+    { MEDIA_MIMETYPE_AUDIO_VORBIS, "VorbisDecoder" },
 };
 
 //Maintain only s/w encoders till ducati encoders are integrated to SF
