@@ -893,7 +893,13 @@ status_t AwesomePlayer::play_l() {
 #ifdef OMAP_ENHANCEMENT
             if (!mSeeking || mVideoSource == NULL) {
                // Resume when video is not present or when
-               // not seeking
+               // not seeking and flush the sink so buffer from
+                //previous position is not heard
+                if(mSeeking){
+                    if(mAudioSink.get() != NULL){
+                        mAudioSink->flush();
+                    }
+                }
                 mAudioPlayer->resume();
             } else {
                 // when seeking it is too early to resume
