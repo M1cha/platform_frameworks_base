@@ -2373,7 +2373,13 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
             if(useExternallyAllocatedBuffers)
             {
                 OMX_VIDEO_PORTDEFINITIONTYPE *videoDef = &def.format.video;
-                info.mSize = ARM_4K_PAGE_SIZE * videoDef->nFrameHeight * 2;
+                int32_t padded_height;
+
+                if (!(mOutputFormat->findInt32(kKeyHeight, &padded_height))) {
+                    padded_height =  videoDef->nFrameHeight;
+                }
+
+                info.mSize = ARM_4K_PAGE_SIZE * padded_height * 2;
             }
         }
 #endif
