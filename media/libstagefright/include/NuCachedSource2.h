@@ -93,6 +93,9 @@ private:
     void onFetch();
     void onRead(const sp<AMessage> &msg);
     void onSuspend();
+#ifdef OMAP_ENHANCEMENT
+    void flushCache();
+#endif
 
     void fetchInternal();
     ssize_t readInternal(off_t offset, void *data, size_t size);
