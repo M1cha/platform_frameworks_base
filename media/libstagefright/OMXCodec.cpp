@@ -3859,6 +3859,30 @@ sp<MetaData> OMXCodec::getFormat() {
 #ifdef OMAP_ENHANCEMENT
 void OMXCodec::setBuffers(Vector< sp<IMemory> > mBufferAddresses){
     mExtBufferAddresses = mBufferAddresses;
+
+    OMX_PARAM_PORTDEFINITIONTYPE def;
+    InitOMXParams(&def);
+    def.nPortIndex = kPortIndexOutput;
+
+    status_t err = mOMX->getParameter(
+                    mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+    CHECK_EQ(err, OK);
+    //reconfigure codec with the number of buffers actually got created
+    //by the Hardware Renderer
+    def.nBufferCountActual = mExtBufferAddresses.size();
+    OMX_VIDEO_PORTDEFINITIONTYPE *video_def = &def.format.video;
+    //Set the proper parameters again, as it is marshalled in Get_Parameter()
+    sp<MetaData> VideoFormat = mSource->getFormat();
+    int32_t width, height;
+    VideoFormat->findInt32(kKeyWidth, &width);
+    VideoFormat->findInt32(kKeyHeight, &height);
+
+    video_def->nFrameWidth = width;
+    video_def->nFrameHeight = height;
+
+    err = mOMX->setParameter(
+                 mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+    CHECK_EQ(err, OK);
 }
 #endif
 
