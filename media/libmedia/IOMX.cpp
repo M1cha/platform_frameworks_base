@@ -34,6 +34,9 @@ enum {
 #endif
     OBSERVER_ON_MSG,
     RENDERER_RENDER,
+#ifdef OMAP_ENHANCEMENT
+    GET_BUFFERS,
+#endif
 };
 
 sp<IOMXRenderer> IOMX::createRenderer(
@@ -863,9 +866,18 @@ public:
 
 #ifdef OMAP_ENHANCEMENT
     virtual Vector< sp<IMemory> > getBuffers(){
-        // Not Implemented
-        Vector< sp<IMemory> > mDummy;
-        return mDummy;
+        int n = 0;
+        Vector< sp<IMemory> > mMem;
+        Parcel data, reply;
+        data.writeInterfaceToken(IOMXRenderer::getInterfaceDescriptor());
+
+        status_t err = remote()->transact(GET_BUFFERS, data, &reply);
+        n = reply.readInt32();
+        for (int i=0;i < n; i++) {
+            sp<IMemory> mem = interface_cast<IMemory>(reply.readStrongBinder());
+            mMem.add(mem);
+        }
+        return mMem;
     }
 
     virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) {return false;}
@@ -893,6 +905,20 @@ status_t BnOMXRenderer::onTransact(
             return NO_ERROR;
         }
 
+#ifdef OMAP_ENHANCEMENT
+        case GET_BUFFERS:
+        {
+            LOGV("<<<<< onTransact GET_BUFFERS");
+            CHECK_INTERFACE(IOMXRenderer, data, reply);
+            Vector< sp<IMemory> > mMem = getBuffers();
+            const size_t N = mMem.size();
+            reply->writeInt32(N);
+            for (size_t i=0; i<N; i++) {
+                reply->writeStrongBinder(mMem[i]->asBinder());
+            }
+            return NO_ERROR;
+        }
+#endif
         default:
             return BBinder::onTransact(code, data, reply, flags);
     }
