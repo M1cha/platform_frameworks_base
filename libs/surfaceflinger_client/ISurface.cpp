@@ -165,6 +165,18 @@ public:
         return;
     }
 
+    virtual int requestOverlayClone(bool enable) {
+        Parcel data, reply;
+        data.writeInterfaceToken(ISurface::getInterfaceDescriptor());
+        data.writeInt32((int)enable);
+        remote()->transact(REQUEST_OVERLAY_CLONE, data, &reply);
+        if (enable) {
+            return (dup(reply.readFileDescriptor()));
+        }
+        else {
+            return -1;
+        }
+    }
 #endif
 
 };
@@ -249,6 +261,18 @@ status_t BnSurface::onTransact(
             setDisplayId(dpy);
             return NO_ERROR;
         } break;
+
+        case REQUEST_OVERLAY_CLONE: {
+            CHECK_INTERFACE(ISurface, data, reply);
+            int enable = data.readInt32();
+            int fd = requestOverlayClone(enable);
+            if (fd > 0) {
+                return reply->writeFileDescriptor(fd);
+            }
+            else {
+                return reply->writeInt32(fd);
+            }
+        }
 
 #endif
         default:

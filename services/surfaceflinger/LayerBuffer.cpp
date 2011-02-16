@@ -222,6 +222,13 @@ void LayerBuffer::setDisplayId(int displayId) {
     }
 }
 
+int LayerBuffer::requestOverlayClone(bool enable) {
+    sp<Source> source(getSource());
+    if (LIKELY(source != 0)) {
+        return (source->requestOverlayClone(enable));
+    }
+    return (-1);
+}
 #endif
 
 sp<LayerBuffer::Source> LayerBuffer::getSource() const {
@@ -302,6 +309,14 @@ void LayerBuffer::SurfaceLayerBuffer::setDisplayId(int dpy) {
         }
 }
 
+int LayerBuffer::SurfaceLayerBuffer::requestOverlayClone(bool enable) {
+    sp<LayerBuffer> owner(getOwner());
+    if(owner != 0) {
+        return (owner->requestOverlayClone(enable));
+    }
+    return (-1);
+}
+
 #endif
 
 // ============================================================================
@@ -370,6 +385,10 @@ void LayerBuffer::Source::unregisterBuffers() {
 }
 #ifdef OMAP_ENHANCEMENT
 void LayerBuffer::Source::setDisplayId(int dpy) {
+}
+
+int LayerBuffer::Source::requestOverlayClone(bool enable) {
+    return -1;
 }
 #endif
 // ---------------------------------------------------------------------------
@@ -788,7 +807,22 @@ void LayerBuffer::OverlaySource::setDisplayId(int displayId) {
         }
     }
 }
+
+int LayerBuffer::OverlaySource::requestOverlayClone(bool enable) {
+    if (UNLIKELY(mOverlay != 0)) {
+        //we need a lock here to protect "destroy"
+        Mutex::Autolock _l(mOverlaySourceLock);
+        if (mOverlay) {
+            overlay_control_device_t* overlay_dev = mOverlayDevice;
+            int overlayclonefd = overlay_dev->requestOverlayClone(overlay_dev, mOverlay, (int)enable);
+            return overlayclonefd;
+        }
+    }
+    return (-1);
+}
+
 #endif
+
 void LayerBuffer::OverlaySource::onVisibilityResolved(
         const Transform& planeTransform)
 {

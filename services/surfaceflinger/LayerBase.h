@@ -314,6 +314,7 @@ public:
         virtual sp<OverlayRef> createOverlay(uint32_t w, uint32_t h,
                 int32_t format, int32_t orientation, int isS3D);
 	virtual void setDisplayId(int displayId);
+        virtual int requestOverlayClone(bool enable);
 #endif
     protected:
         friend class LayerBaseClient;

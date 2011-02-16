@@ -666,6 +666,12 @@ void LayerBaseClient::Surface::setDisplayId(int displayId)
 {
     return;
 }
+
+int LayerBaseClient::Surface::requestOverlayClone(bool enable)
+{
+    return (-1);
+}
+
 #endif
 
 // ---------------------------------------------------------------------------
