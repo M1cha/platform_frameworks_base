@@ -54,7 +54,11 @@ namespace android {
 extern void updateMetaData(sp<MetaData> meta_track);
 #endif
 static int64_t kLowWaterMarkUs = 2000000ll;  // 2secs
+#ifndef OMAP_ENHANCEMENT
 static int64_t kHighWaterMarkUs = 10000000ll;  // 10secs
+#else
+static int64_t kHighWaterMarkUs = 6000000ll;  // 6secs
+#endif
 
 struct AwesomeEvent : public TimedEventQueue::Event {
     AwesomeEvent(
