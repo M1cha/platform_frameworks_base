@@ -1,5 +1,6 @@
-/*
- * Copyright (C) 2008 The Android Open Source Project
+/* HDMIObserver.java
+ *
+ * Copyright 2009-2011 Texas Instruments
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
