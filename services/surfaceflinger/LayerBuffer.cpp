@@ -767,6 +767,9 @@ LayerBuffer::OverlaySource::~OverlaySource()
     if (mOverlay && mOverlayDevice) {
         overlay_control_device_t* overlay_dev = mOverlayDevice;
         overlay_dev->destroyOverlay(overlay_dev, mOverlay);
+#ifdef OMAP_ENHANCEMENT
+        mOverlay = 0;
+#endif
     }
 }
 
