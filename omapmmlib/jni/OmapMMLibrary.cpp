@@ -28,6 +28,7 @@
 #include <surfaceflinger/ISurface.h>
 #include <binder/Parcel.h>
 #include <utils/RefBase.h>
+#include <media/mediaplayer.h>
 
 using namespace android;
 
@@ -57,6 +58,8 @@ struct fields_t{
     jfieldID    mysurface;
     /* actually in android.view.Surface XXX */
     jfieldID    mysurface_native;
+    jfieldID    mediaplayer;
+    jfieldID    mediaplayer_native;
 };
 
 static fields_t fields;
@@ -122,6 +125,25 @@ static void OmapMMLibrary_native_init(JNIEnv* env, jclass clazz1) {
         return;
     }
 
+    fields.mediaplayer = env->GetFieldID(clazz, "mMediaPlayer", "Landroid/media/MediaPlayer;");
+    if (fields.mediaplayer == NULL) {
+        jniThrowException(env, "java/lang/RuntimeException", "Can't find android/media/MediaPlayer", 0);
+        return;
+    }
+
+    jclass mp = env->FindClass("android/media/MediaPlayer");
+    if (mp == NULL) {
+        jniThrowException(env, "java/lang/RuntimeException", "Can't find android/media/MediaPlayer", 0);
+        return;
+    }
+
+    fields.mediaplayer_native = env->GetFieldID(mp, "mNativeContext", "I");
+    if (fields.mediaplayer_native == NULL) {
+        jniThrowException(env, "java/lang/RuntimeException", "Can't find MediaPlayer.mNativeContext", 0);
+        return;
+    }
+
+
     return;
 }
 
@@ -146,6 +168,18 @@ static void OmapMMLibrary_deinit(JNIEnv* env, jclass clazz) {
 **/
 static void OmapMMLibrary_setDisplayId(JNIEnv* env, jclass clazz, int displayId) {
     LOGD("displayId[%d]", displayId);
+    jobject myplayer = env->GetObjectField(clazz, fields.mediaplayer);
+    if (myplayer != NULL) { //media player would be null for switch usecases
+        MediaPlayer* const p = (MediaPlayer*)env->GetIntField(myplayer, fields.mediaplayer_native);
+        if (p) {
+            if (displayId != 0) {
+                p->requestVideoCloneMode(1);
+            }
+            else {
+                p->requestVideoCloneMode(0);
+            }
+        }
+    }
     if (omapmmlib.mSurface != NULL) {
         omapmmlib.mSurface->setDisplayId(displayId);
     }

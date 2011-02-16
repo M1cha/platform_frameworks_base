@@ -20,6 +20,7 @@ import android.util.Config;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
+import android.media.MediaPlayer;
 
 public final class OmapMMLibrary {
 private String TAG = "OmapMMJavaLib";
@@ -31,6 +32,7 @@ static {
     }
 
     private Surface mSurface; // accessed by native methods
+    private MediaPlayer mMediaPlayer; // accessed by native methods
 
     public OmapMMLibrary() {
     }
@@ -45,6 +47,11 @@ static {
         //This is native implemented, to get the associated ISurface
         setVideoISurface();
     }
+
+    public void setMediaPlayer(MediaPlayer mp) {
+            mMediaPlayer = mp;
+	    return;
+        }
 
     /*
     * init will mount required fields
