@@ -288,6 +288,7 @@ private:
     status_t configureCodec(const sp<MetaData> &meta, uint32_t flags);
 #ifdef OMAP_ENHANCEMENT
     static uint32_t getComponentQuirks(const char *componentName, bool isEncoder, uint32_t flags = 0);
+    int32_t mVideoFPS;
 #else
     static uint32_t getComponentQuirks(
             const char *componentName, bool isEncoder);

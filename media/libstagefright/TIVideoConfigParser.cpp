@@ -22,6 +22,7 @@
 
 #define LOG_TAG "SF_TI_Parser"
 #include <utils/Log.h>
+//#define LOG_NDEBUG 0
 
 #include <media/stagefright/MetaData.h>
 #include <media/stagefright/MediaDebug.h>
@@ -126,12 +127,14 @@ static void parse_scaling_list(uint32_t size, bit_buffer * bb) {
     }
 }
 
-void parse_sps(uint8_t * sps, size_t sps_size, uint32_t * width, uint32_t * height,uint8_t *interlaced)
+void parse_sps(uint8_t * sps,size_t sps_size,uint8_t *aprofile,uint8_t *alevel,uint32_t *num_ref_frames,uint8_t *interlaced)
 {
     bit_buffer bb;
-    uint32_t profile, pic_order_cnt_type, width_in_mbs, height_in_map_units;
+    uint32_t pic_order_cnt_type, width_in_mbs, height_in_map_units;
     uint32_t i, size, left, right, top, bottom;
     uint8_t frame_mbs_only_flag;
+    uint8_t profile, level;
+    uint32_t width,height;
 
     bb.start = sps;
     bb.size = sps_size;
@@ -140,10 +143,20 @@ void parse_sps(uint8_t * sps, size_t sps_size, uint32_t * width, uint32_t * heig
 
     /* skip first byte, since we already know we're parsing a SPS */
     skip_bits(&bb, 8);
+
     /* get profile */
-    profile = get_bits(&bb, 8);
-    /* skip 4 bits + 4 zeroed bits + 8 bits = 32 bits = 4 bytes */
-    skip_bits(&bb, 16);
+    profile = (uint8_t) get_bits(&bb, 8);
+    LOGV("AVC Profile %d",profile);
+
+    /* skip 8 bits */
+    skip_bits(&bb, 8);
+
+    /* get level */
+    level = (uint8_t) get_bits(&bb, 8);
+    LOGV("AVC Level %d",level);
+
+    *aprofile = profile;
+    *alevel = level;
 
     /* read sps id, first exp-golomb encoded value */
     exp_golomb_ue(&bb);
@@ -190,8 +203,11 @@ void parse_sps(uint8_t * sps, size_t sps_size, uint32_t * width, uint32_t * heig
             exp_golomb_se(&bb);
         }
     }
+
     /* num_ref_frames */
-    exp_golomb_ue(&bb);
+    *num_ref_frames = exp_golomb_ue(&bb);
+    LOGV("AVC No of Ref frames %d",*num_ref_frames);
+
     /* gaps_in_frame_num_value_allowed_flag */
     skip_bits(&bb, 1);
     /* pic_width_in_mbs */
@@ -201,10 +217,10 @@ void parse_sps(uint8_t * sps, size_t sps_size, uint32_t * width, uint32_t * heig
     /* frame_mbs_only_flag */
     frame_mbs_only_flag = get_bit(&bb);
 
-    LOGV("AVCC frame_mbs_only_flag %d", frame_mbs_only_flag);
+    LOGV("AVC frame_mbs_only_flag %d", frame_mbs_only_flag);
 
     /* 0-interlaced. 1-progressive */
-    *interlaced = !frame_mbs_only_flag; 
+    *interlaced = !frame_mbs_only_flag;
 
     if (!frame_mbs_only_flag) {
         /* mb_adaptive_frame_field */
@@ -224,12 +240,13 @@ void parse_sps(uint8_t * sps, size_t sps_size, uint32_t * width, uint32_t * heig
             bottom *= 2;
         }
     }
+
     /* width */
-    *width = width_in_mbs * 16 - (left + right);
+    width = width_in_mbs * 16 - (left + right);
     /* height */
-    *height = height_in_map_units * 16 - (top + bottom);
+    height = height_in_map_units * 16 - (top + bottom);
     if (!frame_mbs_only_flag) {
-        *height *= 2;
+        height *= 2;
     }
 }
 
@@ -289,7 +306,7 @@ int16_t Search4VOLHeader(bit_buffer *psBits)
     return status;
 }
 
-int16_t parse_vol(uint8_t *vol, size_t vol_size,uint32_t *width, uint32_t *height, uint8_t* interlaced)
+int16_t parse_vol(uint8_t *vol,size_t vol_size,uint8_t *aprofile,uint8_t *alevel,uint32_t *num_ref_frames,uint8_t* interlaced)
 {
     int16_t iErrorStat;
     uint32_t codeword;
@@ -297,6 +314,7 @@ int16_t parse_vol(uint8_t *vol, size_t vol_size,uint32_t *width, uint32_t *heigh
     uint32_t i, j;
 
     uint32_t display_width, display_height;
+    uint32_t width,height;
 
     int32_t* profilelevel;
 
@@ -469,8 +487,8 @@ int16_t parse_vol(uint8_t *vol, size_t vol_size,uint32_t *width, uint32_t *heigh
         ReadBits(psBits, 13, &codeword);
         display_height = (uint32_t)codeword;
 
-        *width = (display_width + 15) & -16;
-        *height = (display_height + 15) & -16;
+        width = (display_width + 15) & -16;
+        height = (display_height + 15) & -16;
 
         /* marker */
         ReadBits(psBits, 1, &codeword);
@@ -494,18 +512,19 @@ int16_t parse_vol(uint8_t *vol, size_t vol_size,uint32_t *width, uint32_t *heigh
     return 0;
 }
 
-bool isinterlaced(sp<MetaData> meta_track)
+void updateMetaData(sp<MetaData> meta_track)
 {
     uint32_t type;
     const void *data;
     size_t size;
 
-    uint32_t decoded_w, decoded_h;
-    uint8_t interlaced;
+    uint8_t profile,level,interlaced;
+    uint32_t num_ref_frames;
 
-    decoded_w = 0;
-    decoded_h = 0;
     interlaced = 0;
+    profile = 0;
+    level = 0;
+    num_ref_frames = 0;
 
     if ( meta_track->findData(kKeyESDS, &type, &data, &size)) {
         LOGV("MPEG4 Header");
@@ -515,8 +534,15 @@ bool isinterlaced(sp<MetaData> meta_track)
 
         uint8_t *ptr = (uint8_t *)data;
 
-        parse_vol(ptr, size, &decoded_w, &decoded_h, &interlaced);
-        LOGD("**INTERLACED %d", interlaced);
+        parse_vol(ptr, size, &profile, &level, &num_ref_frames, &interlaced);
+
+        LOGV("MPEG4  Profile %d Level %d RefFrames %d Interlaced %d ", profile,level,num_ref_frames,interlaced);
+        meta_track->setInt32(kKeyVideoProfile, profile);
+        meta_track->setInt32(kKeyVideoLevel, level);
+        meta_track->setInt32(kKeyVideoInterlaced, interlaced);
+        meta_track->setInt32(kKeyNumRefFrames, num_ref_frames);
+
+
     }
     else if ( meta_track->findData(kKeyAVCC, &type, &data, &size)) {
         LOGV("H264 Header");
@@ -545,8 +571,13 @@ bool isinterlaced(sp<MetaData> meta_track)
 
             CHECK(size >= length);
 
-            parse_sps((uint8_t*)ptr, length, &decoded_w, &decoded_w, &interlaced);
-            LOGD("**INTERLACED %d", interlaced);
+            parse_sps((uint8_t*)ptr, length, &profile, &level, &num_ref_frames, &interlaced);
+
+            LOGV("H264 Profile %d Level %d RefFrames %d Interlaced %d", profile,level,num_ref_frames,interlaced);
+            meta_track->setInt32(kKeyVideoProfile, profile);
+            meta_track->setInt32(kKeyVideoLevel, level);
+            meta_track->setInt32(kKeyNumRefFrames, num_ref_frames);
+            meta_track->setInt32(kKeyVideoInterlaced, interlaced);
 
             ptr += length;
             size -= length;
@@ -554,7 +585,7 @@ bool isinterlaced(sp<MetaData> meta_track)
 
     }
 
-    return interlaced ? true : false;
+    return;
 }
 
 

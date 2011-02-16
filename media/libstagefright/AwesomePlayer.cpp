@@ -51,7 +51,7 @@
 
 namespace android {
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
-extern bool isinterlaced(sp<MetaData> meta_track);
+extern void updateMetaData(sp<MetaData> meta_track);
 #endif
 static int64_t kLowWaterMarkUs = 2000000ll;  // 2secs
 static int64_t kHighWaterMarkUs = 10000000ll;  // 10secs
@@ -1260,12 +1260,19 @@ void AwesomePlayer::setVideoSource(sp<MediaSource> source) {
 
 status_t AwesomePlayer::initVideoDecoder(uint32_t flags) {
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+
+    //Call config parser to update profile,level,interlaced,reference frame data
+    updateMetaData(mVideoTrack->getFormat());
+
+    int32_t isInterlaced = false;
+    mVideoTrack->getFormat()->findInt32(kKeyVideoInterlaced, &isInterlaced);
+
     mVideoSource = OMXCodec::Create(
             mClient.interface(), mVideoTrack->getFormat(),
             false, // createEncoder
             mVideoTrack,
             NULL,
-            flags |isinterlaced(mVideoTrack->getFormat())?OMXCodec::kPreferInterlacedOutputContent:0);
+            (flags | isInterlaced)?OMXCodec::kPreferInterlacedOutputContent:0);
 #else
     mVideoSource = OMXCodec::Create(
             mClient.interface(), mVideoTrack->getFormat(),
@@ -1490,6 +1497,10 @@ void AwesomePlayer::onVideoEvent() {
 
     if (latenessUs > 50000) {
         // We're more than 50ms late.
+
+        /* Trace to detect frame drops */
+        LOGV("Frame dropped - lateness (%lld - %lld = %lld uS)",nowUs,timeUs,latenessUs);
+
 #else
     if (latenessUs > 40000) {
         // We're more than 40ms late.

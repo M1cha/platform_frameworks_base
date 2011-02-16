@@ -1002,6 +1002,144 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
             bool success = meta->findInt32(kKeyWidth, &width);
             success = success && meta->findInt32(kKeyHeight, &height);
             CHECK(success);
+
+#ifdef OMAP_ENHANCEMENT
+
+            /* Update proper Profile, Level, No. of Reference frames.
+               This will aid in less (tiler) memory utilization by ducati side */
+            if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
+				/* save video FPS */
+				if (!(meta->findInt32(kKeyVideoFPS, &mVideoFPS))) {
+					mVideoFPS = 30; //default value in case of FPS data not found
+				}
+
+                int32_t vprofile,vlevel,vinterlaced,vnumrefframes;
+
+                if ((!strcasecmp(MEDIA_MIMETYPE_VIDEO_AVC, mMIME)) &&
+                        meta->findInt32(kKeyVideoProfile, &vprofile) &&
+                        meta->findInt32(kKeyVideoLevel, &vlevel) &&
+                        meta->findInt32(kKeyVideoInterlaced, &vinterlaced) &&
+                        meta->findInt32(kKeyNumRefFrames, &vnumrefframes))
+                {
+
+                    OMX_VIDEO_PARAM_AVCTYPE h264type;
+                    InitOMXParams(&h264type);
+                    h264type.nPortIndex = kPortIndexInput;
+
+                    status_t err = mOMX->getParameter(
+                            mNode, OMX_IndexParamVideoAvc, &h264type, sizeof(h264type));
+                    CHECK_EQ(err, OK);
+
+                    //h264type.nBFrames = 0; //check if requred
+
+
+                    /* Update profile from uint32_t type */
+                    switch(vprofile)
+                    {
+                        case kAVCProfileBaseline :
+                                    h264type.eProfile = OMX_VIDEO_AVCProfileBaseline;
+                                    break;
+                        case kAVCProfileMain :
+                                    h264type.eProfile = OMX_VIDEO_AVCProfileMain;
+                                    break;
+                        case kAVCProfileExtended :
+                                    h264type.eProfile = OMX_VIDEO_AVCProfileExtended;
+                                    break;
+                        case kAVCProfileHigh :
+                                    h264type.eProfile = OMX_VIDEO_AVCProfileHigh;
+                                    break;
+
+                        case kAVCProfileHigh10 :
+                        case kAVCProfileHigh422 :
+                        case kAVCProfileHigh444 :
+                        default:
+                                    //Unsupported profiles by OMX.TI.DUCATI1.VIDEO.DECODER
+                                    LOGE("profile code 0x%x %d not supported", vprofile,vprofile);
+                                    CHECK_EQ(0,1);
+                                    return UNKNOWN_ERROR;
+                    }
+
+
+                    switch(vlevel)
+                    {
+
+                        case 9 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel1b;
+                                    break;
+                        case 10 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel1;
+                                    break;
+                        case 11 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel11;
+                                    break;
+                        case 12 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel12;
+                                    break;
+                        case 13 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel13;
+                                    break;
+                        case 20 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel2;
+                                    break;
+                        case 21 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel21;
+                                    break;
+                        case 22 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel22;
+                                    break;
+                        case 30 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel3;
+                                    break;
+                        case 31 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel31;
+                                    break;
+                        case 32 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel32;
+                                    break;
+
+                        case 40 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel4;
+                                    break;
+
+                        case 41 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel41;
+                                    break;
+
+                        case 42 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel42;
+                                    break;
+
+                        case 50 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel5;
+                                    break;
+
+                        case 51 :
+                                    h264type.eLevel = OMX_VIDEO_AVCLevel51;
+                                    break;
+
+                        default:
+                                    //Unsupported level value
+                                    LOGE("profile code 0x%x %d not supported", vlevel,vlevel);
+                                    CHECK_EQ(0,1);
+                                    return UNKNOWN_ERROR;
+                    }
+
+                    h264type.nRefFrames = vnumrefframes;
+
+#ifdef ENABLE_H264_MEMORY_OPTIMIZATION 
+                    //Enable this updation in 1.21-P1
+                    err = mOMX->setParameter(
+                            mNode, OMX_IndexParamVideoAvc, &h264type, sizeof(h264type));
+                    CHECK_EQ(err, OK);
+#endif
+                    /* Cross check from component */
+                    err = mOMX->getParameter(
+                            mNode, OMX_IndexParamVideoAvc, &h264type, sizeof(h264type));
+
+                    LOGD("H264 Component profile %d level %d NRefFrames %d", h264type.eProfile,h264type.eLevel, (int)h264type.nRefFrames);
+                }
+            }
+#endif
             status_t err = setVideoOutputFormat(
                     mMIME, width, height);
 
@@ -2134,6 +2272,8 @@ status_t OMXCodec::setVideoOutputFormat(
         if(mQuirks & kInterlacedOutputContent){
             video_def->eColorFormat = OMX_TI_COLOR_FormatYUV420PackedSemiPlanar_Sequential_TopBottom;
         }
+
+        video_def->xFramerate = mVideoFPS << 16;
     }
 #endif
     video_def->nFrameWidth = width;
