@@ -108,6 +108,9 @@ struct AwesomeRemoteRenderer : public AwesomeRenderer {
         mTarget->resizeRenderer(width, height);
     }
 
+    virtual void requestRendererClone(bool enable) {
+        mTarget->requestRendererClone(enable);
+    }
 #endif
 
 private:
@@ -149,6 +152,9 @@ struct AwesomeLocalRenderer : public AwesomeRenderer {
     }
     virtual void resizeRenderer(uint32_t width, uint32_t height) {
         mTarget->resizeRenderer(width, height);
+    }
+    virtual void requestRendererClone(bool enable) {
+        mTarget->requestRendererClone(enable);
     }
 #endif
 
@@ -298,6 +304,7 @@ AwesomePlayer::AwesomePlayer()
     mS3Dparams.fmt = S3D_FORMAT_NONE;
     mS3Dparams.order = S3D_ORDER_LF;
     mS3Dparams.subsampling = S3D_SS_NONE;
+    mVideoMode = VID_MODE_NORMAL;
 #endif
 
     reset();
@@ -2145,6 +2152,27 @@ void AwesomePlayer::releaseRenderedBuffer(const sp<IMemory>& mem){
     if (buffer_released == false)
         LOGD("Something wrong... Overlay returned wrong buffer address(%p). This message is harmless if you just did a seek.", mem->pointer());
 }
+
+
+status_t AwesomePlayer::requestVideoCloneMode(bool enable) {
+    if (enable)
+    {
+        if ((mVideoMode != VID_MODE_CLONE) && (mVideoRenderer != NULL)) {
+            mVideoMode = VID_MODE_CLONE;
+            mVideoRenderer->requestRendererClone(enable);
+        }
+    }
+    else
+    {
+        if ((mVideoMode != VID_MODE_NORMAL) && (mVideoRenderer != NULL)) {
+            mVideoMode = VID_MODE_NORMAL;
+            mVideoRenderer->requestRendererClone(enable);
+        }
+    }
+    LOGD("CloneMode[%d]", mVideoMode);
+    return OK;
+}
+
 #endif
 
 }  // namespace android

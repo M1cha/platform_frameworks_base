@@ -56,6 +56,7 @@ struct AwesomeRenderer : public RefBase {
     virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) {return false;}
     virtual void set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint32_t s3d_order, uint32_t s3d_subsampling){};
     virtual void resizeRenderer(uint32_t width, uint32_t height) = 0;
+    virtual void requestRendererClone(bool enable) = 0;
 #endif
 
 private:
@@ -100,6 +101,9 @@ struct AwesomePlayer {
 
     status_t suspend();
     status_t resume();
+#ifdef OMAP_ENHANCEMENT
+    status_t requestVideoCloneMode(bool enable);
+#endif
 
     // This is a mask of MediaExtractor::Flags.
     uint32_t flags() const;
@@ -131,7 +135,12 @@ private:
         HOLD_TO_RESUME      = 128,
         MAX_RESOLUTION      = 414720, // 864x480(WVGA) - 720x576(D1-PAL)
     };
+    enum {
+         VID_MODE_NORMAL = 0,
+         VID_MODE_CLONE = 1
+      };
 
+    int mVideoMode;
 #if defined(TARGET_OMAP4)
     S3D_params mS3Dparams;
 #endif

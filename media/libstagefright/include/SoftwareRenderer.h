@@ -43,6 +43,7 @@ public:
 #ifdef OMAP_ENHANCEMENT
     virtual Vector< sp<IMemory> > getBuffers();
     virtual void resizeRenderer(uint32_t width, uint32_t height) {}
+    virtual void requestRendererClone(bool enable) {}
 #endif
 
 private:

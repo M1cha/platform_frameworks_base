@@ -471,6 +471,9 @@ struct SharedVideoRenderer : public VideoRenderer {
     virtual void resizeRenderer(uint32_t width, uint32_t height) {
           mObj->resizeRenderer(width, height);
     }
+virtual void requestRendererClone(bool enable) {
+    mObj->requestRendererClone(enable);
+}
 #endif
 
 private:
@@ -644,6 +647,11 @@ void OMXRenderer::set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint
 void OMXRenderer::resizeRenderer(uint32_t width, uint32_t height) {
     mImpl->resizeRenderer(width, height);
 }
+
+void OMXRenderer::requestRendererClone(bool enable) {
+    mImpl->requestRendererClone(enable);
+}
+
 #endif
 
 }  // namespace android
