@@ -488,6 +488,10 @@ void AwesomePlayer::reset_l() {
     mAudioTrack.clear();
     mVideoTrack.clear();
 
+#ifdef OMAP_ENHANCEMENT
+    mVideoMode = VID_MODE_NORMAL;
+#endif
+
     // Shutdown audio first, so that the respone to the reset request
     // appears to happen instantaneously as far as the user is concerned
     // If we did this later, audio would continue playing while we
