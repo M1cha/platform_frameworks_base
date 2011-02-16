@@ -2029,31 +2029,14 @@ public class AudioService extends IAudioService.Stub {
                     mConnectedDevices.remove(AudioSystem.DEVICE_OUT_LOW_POWER);
                 }
             } else if (SystemProperties.OMAP_ENHANCEMENT && action.equals(MAIN_MIC_CHOICE)) {
-                /*
-                 * mic choice is not configurable by intent yet, this is here for future use.
-                 * eventually, the mic choice will be set from applications using this intent
-                 * and we will update the logic to be flexible for mics other than DMIC0.
-                 */
-                Intent noisyIntent = new Intent(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
-                mContext.sendBroadcast(noisyIntent);
-                if (intent.getBooleanExtra("DMic0L", true)) {
-                     Log.e(TAG,"MAIN MIC - DMIC0L selected");
-                } else if (intent.getBooleanExtra("AMic0", true)) {
-                    Log.e(TAG,"MAIN MIC - AMIC selected");
-                } else {
-                    Log.e(TAG,"MAIN MIC - invalid selection, only [DMIC0L,AMIC0] supported");
-                }
+                // validation, etc will be done by receiver of parameter
+                String choice = intent.getStringExtra("choice");
+                AudioSystem.setParameters(action + "=" + choice);
+
             } else if (SystemProperties.OMAP_ENHANCEMENT && action.equals(SUB_MIC_CHOICE)) {
-                // mic choice is not configurable by intent yet, this is here for future use
-                Intent noisyIntent = new Intent(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
-                mContext.sendBroadcast(noisyIntent);
-                if (intent.getBooleanExtra("DMic0R", true)) {
-                    Log.e(TAG,"SUB MIC - DMIC0R selected");
-                } else if (intent.getBooleanExtra("AMic1", true)) {
-                    Log.e(TAG,"SUB MIC - AMIC selected");
-                } else {
-                    Log.e(TAG,"SUB MIC - invalid selection, only [DMIC0R,AMIC] supported");
-                }
+                // validation, etc will be done by receiver of parameter
+                String choice = intent.getStringExtra("choice");
+                AudioSystem.setParameters(action + "=" + choice);
             }
         }
     }
