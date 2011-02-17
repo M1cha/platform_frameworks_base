@@ -52,6 +52,16 @@ struct OMXCodec : public MediaSource,
             const char *matchComponentName = NULL,
             uint32_t flags = 0);
 
+#ifdef OMAP_ENHANCEMENT
+    static sp<MediaSource> Create(
+            const sp<IOMX> &omx,
+            const sp<MetaData> &meta, bool createEncoder,
+            const sp<MediaSource> &source,
+            IOMX::node_id &nodeId,
+            const char *matchComponentName = NULL,
+            uint32_t flags = 0);
+#endif
+
     static void setComponentRole(
             const sp<IOMX> &omx, IOMX::node_id node, bool isEncoder,
             const char *mime);
