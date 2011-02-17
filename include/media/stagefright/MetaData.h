@@ -41,6 +41,9 @@ enum {
     kKeyBitRate           = 'brte',  // int32_t (bps)
     kKeyESDS              = 'esds',  // raw data
     kKeyAVCC              = 'avcc',  // raw data
+#ifdef OMAP_ENHANCEMENT
+    kKeyStreamSpecificData= 'scsd',  // raw data
+#endif
     kKeyVorbisInfo        = 'vinf',  // raw data
     kKeyVorbisBooks       = 'vboo',  // raw data
     kKeyWantsNALFragments = 'NALf',

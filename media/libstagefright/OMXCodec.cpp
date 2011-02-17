@@ -674,6 +674,8 @@ void OMXCodec::findMatchingCodecs(
         if ((flags & kPreferThumbnailMode) &&
             (!strcasecmp(mime, MEDIA_MIMETYPE_VIDEO_MPEG4) ||
              !strcasecmp(mime, MEDIA_MIMETYPE_VIDEO_H263) ||
+             !strcasecmp(mime, MEDIA_MIMETYPE_VIDEO_VP6) ||
+             !strcasecmp(mime, MEDIA_MIMETYPE_VIDEO_VP7) ||
              !strcasecmp(mime, MEDIA_MIMETYPE_VIDEO_AVC)))
         {
             flags &= ~kPreferSoftwareCodecs;
@@ -850,7 +852,52 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
         uint32_t type;
         const void *data;
         size_t size;
-        if (meta->findData(kKeyESDS, &type, &data, &size)) {
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    status_t err;
+
+    if (meta->findData(kKeyStreamSpecificData, &type, &data, &size))
+    {
+        if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
+
+            if ((!strcasecmp(MEDIA_MIMETYPE_VIDEO_VP6, mMIME)) ||
+                (!strcasecmp(MEDIA_MIMETYPE_VIDEO_VP7, mMIME))) {
+
+                LOGD("Setting VP6/7 Params");
+                OMX_TI_PARAM_IVFFLAG tVP6Param;
+                InitOMXParams(&tVP6Param);
+                err = mOMX->getParameter(
+                        mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoIvfMode, &tVP6Param, sizeof(tVP6Param));
+
+                CHECK_EQ(err, OK);
+                tVP6Param.bIvfFlag = OMX_FALSE;
+
+                char *t = ((char *)(data));
+                if ((t[0] == 'D') && (t[1] == 'K') && (t[2] == 'I') && (t[3] == 'F')){
+                    LOGD("IVF Header Present. Size = %d. Limiting it to 32 as per spec.", size);
+                    size = 32;
+                    addCodecSpecificData(data, size);
+                    tVP6Param.bIvfFlag = OMX_TRUE;
+                }
+                err = mOMX->setParameter(
+                        mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoIvfMode, &tVP6Param, sizeof(tVP6Param));
+
+                OMX_TI_PARAM_PAYLOADHEADERFLAG tVP6Payloadheader;
+                InitOMXParams(&tVP6Payloadheader);
+                err = mOMX->getParameter(
+                        mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoPayloadHeaderFlag, &tVP6Payloadheader, sizeof(tVP6Payloadheader));
+                CHECK_EQ(err, OK);
+                tVP6Payloadheader.bPayloadHeaderFlag = OMX_FALSE;
+                err = mOMX->setParameter(
+                        mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoPayloadHeaderFlag, &tVP6Payloadheader, sizeof(tVP6Payloadheader));
+
+            }
+        }
+        else addCodecSpecificData(data, size);
+    }
+    else if (meta->findData(kKeyESDS, &type, &data, &size)) {
+#else
+    if (meta->findData(kKeyESDS, &type, &data, &size)) {
+#endif
             ESDS esds((const char *)data, size);
             CHECK_EQ(esds.InitCheck(), OK);
 
@@ -4748,6 +4795,14 @@ void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
             } else if (video_def->eCompressionFormat == OMX_VIDEO_CodingAVC) {
                 mOutputFormat->setCString(
                         kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_AVC);
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+            } else if (video_def->eCompressionFormat == (OMX_VIDEO_CODINGTYPE)OMX_VIDEO_CodingVP6) {
+                mOutputFormat->setCString(
+                        kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_VP6);
+            } else if (video_def->eCompressionFormat == (OMX_VIDEO_CODINGTYPE)OMX_VIDEO_CodingVP7) {
+                mOutputFormat->setCString(
+                        kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_VP7);
+#endif
             } else {
                 CHECK(!"Unknown compression format.");
             }
