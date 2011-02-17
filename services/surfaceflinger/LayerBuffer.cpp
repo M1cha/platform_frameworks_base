@@ -653,6 +653,23 @@ LayerBuffer::OverlaySource::OverlaySource(LayerBuffer& layer,
     overlay_dev->setParameter(overlay_dev, overlay, 
             OVERLAY_DITHER, OVERLAY_ENABLE);
 
+#ifdef OMAP_ENHANCEMENT
+    //get the graphic plane pixel format and decide whether to use color key
+    //or per-pixel alpha blend
+    PixelFormat pixfmt = mLayer.mFlinger->getFormat();
+    if ((pixfmt == PIXEL_FORMAT_RGBA_8888) || (pixfmt == PIXEL_FORMAT_BGRA_8888) || \
+     (pixfmt == PIXEL_FORMAT_RGBA_5551) || (pixfmt == PIXEL_FORMAT_RGBA_4444))
+    {
+        overlay_dev->setParameter(overlay_dev, overlay,
+                              OVERLAY_COLOR_KEY,-1); //here -ve value is to disable colorkey
+    }
+    else
+    {
+        overlay_dev->setParameter(overlay_dev, overlay,
+              OVERLAY_COLOR_KEY, 0x00); //enabling black color key
+    }
+#endif
+
     mOverlay = overlay;
     mWidth = overlay->w;
     mHeight = overlay->h;
@@ -692,6 +709,21 @@ LayerBuffer::OverlaySource::OverlaySource(LayerBuffer& layer,
     // enable dithering...
     overlay_dev->setParameter(overlay_dev, overlay,
             OVERLAY_DITHER, OVERLAY_ENABLE);
+
+    //get the graphic plane pixel format and decide whether to use color key
+    //or per-pixel alpha blend
+    PixelFormat pixfmt = mLayer.mFlinger->getFormat();
+    if ((pixfmt == PIXEL_FORMAT_RGBA_8888) || (pixfmt == PIXEL_FORMAT_BGRA_8888) || \
+     (pixfmt == PIXEL_FORMAT_RGBA_5551) || (pixfmt == PIXEL_FORMAT_RGBA_4444))
+    {
+         overlay_dev->setParameter(overlay_dev, overlay,
+                              OVERLAY_COLOR_KEY,-1); //here -ve value is to disable colorkey
+    }
+    else
+    {
+        overlay_dev->setParameter(overlay_dev, overlay,
+              OVERLAY_COLOR_KEY, 0x00); //enabling black color key
+    }
 
     mOverlay = overlay;
     mWidth = overlay->w;
@@ -783,16 +815,16 @@ void LayerBuffer::OverlaySource::onVisibilityResolved(
                         Transform(mOrientation));
                 overlay_dev->setParameter(overlay_dev, mOverlay,
                         OVERLAY_TRANSFORM, finalTransform.getOrientation());
+#ifdef OMAP_ENHANCEMENT
                 //get the current state of the layer: to commit the latest parameters
                 State& layerSt = mLayer.currentState();
-                overlay_dev->setParameter(overlay_dev, mOverlay,
-                        OVERLAY_COLOR_KEY, 0x00);
                 overlay_dev->setParameter(overlay_dev, mOverlay,
                         OVERLAY_PLANE_ALPHA, layerSt.alpha);
                 overlay_dev->setParameter(overlay_dev, mOverlay,
                         OVERLAY_PLANE_Z_ORDER, layerSt.z);
                 overlay_dev->setParameter(overlay_dev, mOverlay,
                 OVERLAY_SET_SCREEN_ID, mLayer.dpy);
+#endif
                 overlay_dev->commit(overlay_dev, mOverlay);
             }
         }
