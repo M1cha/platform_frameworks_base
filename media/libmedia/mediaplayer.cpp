@@ -305,8 +305,13 @@ status_t MediaPlayer::stop()
     LOGV("stop");
     Mutex::Autolock _l(mLock);
     if (mCurrentState & MEDIA_PLAYER_STOPPED) return NO_ERROR;
+#ifdef OMAP_ENHANCEMENT
+    if ( (mPlayer != 0) && ( mCurrentState & ( MEDIA_PLAYER_STARTED | MEDIA_PLAYER_PREPARED |
+                    MEDIA_PLAYER_PAUSED | MEDIA_PLAYER_PLAYBACK_COMPLETE | MEDIA_PLAYER_SUSPEND ) ) ) {
+#else
     if ( (mPlayer != 0) && ( mCurrentState & ( MEDIA_PLAYER_STARTED | MEDIA_PLAYER_PREPARED |
                     MEDIA_PLAYER_PAUSED | MEDIA_PLAYER_PLAYBACK_COMPLETE ) ) ) {
+#endif
         status_t ret = mPlayer->stop();
         if (ret != NO_ERROR) {
             mCurrentState = MEDIA_PLAYER_STATE_ERROR;
