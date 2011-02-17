@@ -86,7 +86,10 @@ struct OMXCodec : public MediaSource,
 protected:
     virtual ~OMXCodec();
 
+#ifndef OMAP_ENHANCEMENT
 private:
+#endif
+
     enum State {
         DEAD,
         LOADED,
@@ -285,8 +288,13 @@ private:
 
     void dumpPortStatus(OMX_U32 portIndex);
 
-    status_t configureCodec(const sp<MetaData> &meta, uint32_t flags);
 #ifdef OMAP_ENHANCEMENT
+public:
+#endif
+    status_t configureCodec(const sp<MetaData> &meta, uint32_t flags);
+
+#ifdef OMAP_ENHANCEMENT
+protected:
     static uint32_t getComponentQuirks(const char *componentName, bool isEncoder, uint32_t flags = 0);
     int32_t mVideoFPS;
 #else
@@ -306,6 +314,50 @@ private:
     uint32_t mNumberOfNPABuffersSent;
 #endif
 };
+
+#if defined(OMAP_ENHANCEMENT)
+struct OMXCodecObserver : public BnOMXObserver {
+    OMXCodecObserver() {
+    }
+
+    void setCodec(const sp<OMXCodec> &target) {
+        mTarget = target;
+    }
+
+    // from IOMXObserver
+    virtual void onMessage(const omx_message &msg) {
+         sp<OMXCodec> codec = mTarget.promote();
+
+        if (codec.get() != NULL) {
+            codec->on_message(msg);
+        }
+    }
+
+protected:
+    virtual ~OMXCodecObserver() {}
+
+private:
+    wp<OMXCodec> mTarget;
+
+    OMXCodecObserver(const OMXCodecObserver &);
+    OMXCodecObserver &operator=(const OMXCodecObserver &);
+};
+
+template<class T>
+static void InitOMXParams(T *params) {
+    params->nSize = sizeof(T);
+    params->nVersion.s.nVersionMajor = 1;
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    //Ducati strict OMX Version check
+    params->nVersion.s.nVersionMinor = 1;
+#else
+    params->nVersion.s.nVersionMinor = 0;
+#endif
+    params->nVersion.s.nRevision = 0;
+    params->nVersion.s.nStep = 0;
+}
+
+#endif
 
 struct CodecProfileLevel {
     OMX_U32 mProfile;

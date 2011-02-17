@@ -350,7 +350,7 @@ static const CodecInfo kEncoderInfo[] = {
 #define CACHELINE_BOUNDARY_MEMALIGNMENT 32
 #endif
 
-
+#ifndef OMAP_ENHANCEMENT
 struct OMXCodecObserver : public BnOMXObserver {
     OMXCodecObserver() {
     }
@@ -377,6 +377,7 @@ private:
     OMXCodecObserver(const OMXCodecObserver &);
     OMXCodecObserver &operator=(const OMXCodecObserver &);
 };
+#endif
 
 static const char *GetCodec(const CodecInfo *info, size_t numInfos,
                             const char *mime, int index) {
@@ -427,19 +428,16 @@ static const char *AVCProfileToString(uint8_t profile) {
     }
 }
 
+#ifndef OMAP_ENHANCEMENT
 template<class T>
 static void InitOMXParams(T *params) {
     params->nSize = sizeof(T);
     params->nVersion.s.nVersionMajor = 1;
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
-    //Ducati strict OMX Version check
-    params->nVersion.s.nVersionMinor = 1;
-#else
     params->nVersion.s.nVersionMinor = 0;
-#endif
     params->nVersion.s.nRevision = 0;
     params->nVersion.s.nStep = 0;
 }
+#endif
 
 static bool IsSoftwareCodec(const char *componentName) {
     if (!strncmp("OMX.PV.", componentName, 7)) {
