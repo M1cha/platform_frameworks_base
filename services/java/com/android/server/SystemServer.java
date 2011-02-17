@@ -59,6 +59,9 @@ import java.io.File;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/* TI-OMAP custom package */
+import com.ti.omap.omap_mm_library.UiCloningService;
+
 class ServerThread extends Thread {
     private static final String TAG = "SystemServer";
     private final static boolean INCLUDE_DEMO = false;
@@ -135,6 +138,7 @@ class ServerThread extends Thread {
         UiModeManagerService uiMode = null;
         RecognitionManagerService recognition = null;
         ThrottleService throttle = null;
+        UiCloningService uiCloning = null;
 
         // Critical services...
         try {
@@ -464,6 +468,17 @@ class ServerThread extends Thread {
                 ServiceManager.addService("diskstats", new DiskStatsService(context));
             } catch (Throwable e) {
                 Slog.e(TAG, "Failure starting DiskStats Service", e);
+            }
+
+            if (SystemProperties.OMAP_ENHANCEMENT ) {
+                if(SystemProperties.getBoolean("tv.hdmi.uicloning.enable", false)) {
+                    try {
+                        Slog.i(TAG, "UiCloningService");
+                        uiCloning = new UiCloningService(context);
+                    } catch (Throwable e) {
+                        Slog.e(TAG, "Failure starting UiCloningService", e);
+                    }
+                }
             }
         }
 

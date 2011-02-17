@@ -39,6 +39,7 @@ class HDMIObserver extends UEventObserver {
 
     private static final String HDMI_UEVENT_MATCH = "DEVPATH=/devices/omapdss/display2";
     private static final String HDMIName = "hdmi";
+    private static final String HDMI_STATE_PATH = "/sys/devices/platform/omapdss/display2/enabled";
 
     private int mHDMIState;
     private int mPrevHDMIState;
@@ -87,8 +88,18 @@ class HDMIObserver extends UEventObserver {
         // we'll receive uevent if we boot-up with cable inserted
 	mHDMIState = 0;
         mPrevHDMIState = mHDMIState;
-
-        update(HDMIName, mHDMIState);
+        int newState = mHDMIState;
+        char[] buffer = new char[1024];
+        try {
+            FileReader file = new FileReader(HDMI_STATE_PATH);
+            int len = file.read(buffer, 0, 1024);
+            newState = Integer.valueOf((new String(buffer, 0, len)).trim());
+            update(HDMIName, newState);
+        } catch (FileNotFoundException e) {
+            Slog.w(TAG, "This kernel does not have hdmi support");
+        } catch (Exception e) {
+            Slog.e(TAG, "" , e);
+        }
     }
 
     private synchronized final void update(String newName, int newState) {
