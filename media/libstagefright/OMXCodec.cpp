@@ -768,6 +768,81 @@ uint32_t quirks = getComponentQuirks(componentName, createEncoder, flags);
     return NULL;
 }
 
+#ifdef OMAP_ENHANCEMENT
+// static
+sp<MediaSource> OMXCodec::Create(
+        const sp<IOMX> &omx,
+        const sp<MetaData> &meta, bool createEncoder,
+        const sp<MediaSource> &source,
+        IOMX::node_id &nodeId,
+        const char *matchComponentName,
+        uint32_t flags) {
+    const char *mime;
+    bool success = meta->findCString(kKeyMIMEType, &mime);
+    CHECK(success);
+
+    Vector<String8> matchingCodecs;
+    findMatchingCodecs(
+            mime, createEncoder, matchComponentName, flags, &matchingCodecs);
+
+    if (matchingCodecs.isEmpty()) {
+        return NULL;
+    }
+
+    sp<OMXCodecObserver> observer = new OMXCodecObserver;
+    IOMX::node_id node = 0;
+
+    const char *componentName;
+    for (size_t i = 0; i < matchingCodecs.size(); ++i) {
+        componentName = matchingCodecs[i].string();
+
+#if BUILD_WITH_FULL_STAGEFRIGHT
+        sp<MediaSource> softwareCodec =
+            InstantiateSoftwareCodec(componentName, source);
+
+        if (softwareCodec != NULL) {
+            LOGV("Successfully allocated software codec '%s'", componentName);
+
+            return softwareCodec;
+        }
+#endif
+
+        LOGV("Attempting to allocate OMX node '%s'", componentName);
+
+        status_t err = omx->allocateNode(componentName, observer, &node);
+        if (err == OK) {
+            LOGV("Successfully allocated OMX node '%s'", componentName);
+
+#ifdef TARGET_OMAP4
+            sp<OMXCodec> codec = new OMXCodec(
+                    omx, node, getComponentQuirks(componentName,createEncoder,flags),
+                    createEncoder, mime, componentName,
+                    source);
+#else
+            sp<OMXCodec> codec = new OMXCodec(
+                    omx, node, getComponentQuirks(componentName,createEncoder),
+                    createEncoder, mime, componentName,
+                    source);
+#endif
+
+            observer->setCodec(codec);
+
+            nodeId = node;
+
+            err = codec->configureCodec(meta,flags);
+
+            if (err == OK) {
+                return codec;
+            }
+
+            LOGV("Failed to configure codec '%s'", componentName);
+        }
+    }
+
+    return NULL;
+}
+#endif
+
 status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
 #if !(defined(OMAP_ENHANCEMENT) && defined (TARGET_OMAP4))
     if (!(flags & kIgnoreCodecSpecificData)) {
