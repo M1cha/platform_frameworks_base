@@ -38,7 +38,8 @@ LOCAL_SHARED_LIBRARIES := \
         libutils\
         libbinder \
         libui \
-        libsurfaceflinger_client
+        libsurfaceflinger_client \
+        libmedia
 
 # No static libraries.
 LOCAL_STATIC_LIBRARIES :=
