@@ -119,7 +119,7 @@ static void OmapMMLibrary_native_init(JNIEnv* env, jclass clazz1) {
         return;
     }
 
-    fields.mysurface_native = env->GetFieldID(mysurface, "mSurface", "I");
+    fields.mysurface_native = env->GetFieldID(mysurface, "mNativeSurface", "I");
     if (fields.mysurface_native == NULL) {
         jniThrowException(env, "java/lang/RuntimeException", "Can't find Surface.mSurface", 0);
         return;
