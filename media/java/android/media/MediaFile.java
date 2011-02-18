@@ -64,11 +64,14 @@ public class MediaFile {
     public static final int FILE_TYPE_3GPP2   = 24;
     public static final int FILE_TYPE_WMV     = 25;
     public static final int FILE_TYPE_ASF     = 26;
+
     public static final int FILE_TYPE_MKV     = 27;
     public static final int FILE_TYPE_MP2TS   = 28;
     private static final int FIRST_VIDEO_FILE_TYPE = FILE_TYPE_MP4;
-    private static final int LAST_VIDEO_FILE_TYPE = FILE_TYPE_MP2TS;
-    
+
+    public static final int FILE_TYPE_AVI     = 29;
+    private static final int LAST_VIDEO_FILE_TYPE = FILE_TYPE_AVI;
+
     // Image file types
     public static final int FILE_TYPE_JPEG    = 31;
     public static final int FILE_TYPE_GIF     = 32;
@@ -163,7 +166,9 @@ public class MediaFile {
             addFileType("WMV", FILE_TYPE_WMV, "video/x-ms-wmv");
             addFileType("ASF", FILE_TYPE_ASF, "video/x-ms-asf");
         }
-
+        if("true".equals(System.getProperty("omap.enhancement"))) {
+            addFileType("AVI", FILE_TYPE_AVI, "video/avi");
+        }
         addFileType("JPG", FILE_TYPE_JPEG, "image/jpeg");
         addFileType("JPEG", FILE_TYPE_JPEG, "image/jpeg");
         addFileType("GIF", FILE_TYPE_GIF, "image/gif");

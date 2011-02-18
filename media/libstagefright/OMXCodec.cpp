@@ -63,6 +63,7 @@
 #include <cutils/properties.h>
 #include "OMX_TI_Index.h"
 #include "OMX_TI_Common.h"
+
 #include "OMX_TI_Video.h"
 #endif
 
@@ -223,8 +224,9 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_VIDEO_H263, "M4vH263Decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.DUCATI1.VIDEO.DECODER" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "AVCDecoder" },
-    { MEDIA_MIMETYPE_VIDEO_VPX, "VPXDecoder" },
     { MEDIA_MIMETYPE_AUDIO_VORBIS, "VorbisDecoder" },
+    { MEDIA_MIMETYPE_VIDEO_VP6, "OMX.TI.DUCATI1.VIDEO.DECODER" },
+    { MEDIA_MIMETYPE_VIDEO_VP7, "OMX.TI.DUCATI1.VIDEO.DECODER" }
 };
 
 //Maintain only s/w encoders till ducati encoders are integrated to SF
@@ -2132,6 +2134,12 @@ status_t OMXCodec::setVideoOutputFormat(
         compressionFormat = OMX_VIDEO_CodingMPEG4;
     } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_H263, mime)) {
         compressionFormat = OMX_VIDEO_CodingH263;
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_VP6, mime)) {
+        compressionFormat = (OMX_VIDEO_CODINGTYPE)OMX_VIDEO_CodingVP6;
+    } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_VP7, mime)) {
+        compressionFormat = (OMX_VIDEO_CODINGTYPE)OMX_VIDEO_CodingVP7;
+#endif
     } else {
         LOGE("Not a supported video mime type: %s", mime);
         CHECK(!"Should not be here. Not a supported video mime type.");
@@ -2393,6 +2401,12 @@ void OMXCodec::setComponentRole(
             "video_decoder.mpeg4", "video_encoder.mpeg4" },
         { MEDIA_MIMETYPE_VIDEO_H263,
             "video_decoder.h263", "video_encoder.h263" },
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+        { MEDIA_MIMETYPE_VIDEO_VP6,
+            "video_decoder.vp6", NULL },
+        { MEDIA_MIMETYPE_VIDEO_VP7,
+            "video_decoder.vp7", NULL },
+#endif
     };
 
     static const size_t kNumMimeToRole =
@@ -4341,8 +4355,23 @@ static const char *videoCompressionFormatString(OMX_VIDEO_CODINGTYPE type) {
         "OMX_VIDEO_CodingRV",
         "OMX_VIDEO_CodingAVC",
         "OMX_VIDEO_CodingMJPEG",
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+        "OMX_VIDEO_CodingVP6",
+        "OMX_VIDEO_CodingVP7"
+#endif
     };
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+
+    if (type == OMX_VIDEO_CodingVP6) {
+        return kNames[9];
+    }
+
+    if (type == OMX_VIDEO_CodingVP7) {
+        return kNames[10];
+    }
+#endif
+    
     size_t numNames = sizeof(kNames) / sizeof(kNames[0]);
 
     if (type < 0 || (size_t)type >= numNames) {
