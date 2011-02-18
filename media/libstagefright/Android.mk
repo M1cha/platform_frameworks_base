@@ -55,6 +55,10 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/frameworks/base/include/media/stagefright/openmax \
         $(TOP)/external/tremolo \
         $(TOP)/frameworks/base/media/libstagefright/rtsp
+ifeq ($(OMAP_ENHANCEMENT),true)
+LOCAL_C_INCLUDES += \
+        $(TOP)/hardware/ti/omap3/liboverlay
+endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
 LOCAL_C_INCLUDES += hardware/ti/omx/ducati/domx/system/omx_core/inc

@@ -114,6 +114,10 @@ static int Calculate_TotalRefFrames(int nWidth, int nHeight) {
 
 #endif
 
+#ifdef OMAP_ENHANCEMENT
+#include <overlay_common.h>
+#endif
+
 namespace android {
 
 static const int OMX_QCOM_COLOR_FormatYVU420SemiPlanar = 0x7FA30C00;
@@ -1173,17 +1177,15 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
 
                     h264type.nRefFrames = vnumrefframes;
 
-#ifdef ENABLE_H264_MEMORY_OPTIMIZATION 
-                    //Enable this updation in 1.21-P1
                     err = mOMX->setParameter(
                             mNode, OMX_IndexParamVideoAvc, &h264type, sizeof(h264type));
                     CHECK_EQ(err, OK);
-#endif
+
                     /* Cross check from component */
                     err = mOMX->getParameter(
                             mNode, OMX_IndexParamVideoAvc, &h264type, sizeof(h264type));
 
-                    LOGD("H264 Component profile %d level %d NRefFrames %d", h264type.eProfile,h264type.eLevel, (int)h264type.nRefFrames);
+                    LOGD("Updated. H264 Component profile %d level %d NRefFrames %d", h264type.eProfile,h264type.eLevel, (int)h264type.nRefFrames);
                 }
             }
 #endif
@@ -2293,11 +2295,8 @@ status_t OMXCodec::setVideoOutputFormat(
 #endif
 
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+
     if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
-
-        //Calculate the buffer count to take display optimal buffer count into account
-        def.nBufferCountActual = Calculate_TotalRefFrames(width, height);
-
         //update nStride - a strict requirement in 1.16 Ducati rls. Also Thumbnail is 1D buffer.
         //Also in case of Stage fright command line tests 1D output buffer is used when we
         //allocate buffers on output port
@@ -2329,6 +2328,12 @@ status_t OMXCodec::setVideoOutputFormat(
         }
 
         video_def->xFramerate = mVideoFPS << 16;
+    }
+
+    if(!(mQuirks & OMXCodec::kThumbnailMode)){
+            //playback usecase. Calculate the buffer count to take display optimal buffer count into account
+            //Note: this is applicable for both ducati and h/w codecs
+            def.nBufferCountActual = def.nBufferCountActual + (2 * NUM_BUFFERS_TO_BE_QUEUED_FOR_OPTIMAL_PERFORMANCE);
     }
 #endif
     video_def->nFrameWidth = width;
@@ -4864,6 +4869,23 @@ status_t OMXCodec::pause() {
 
     return OK;
 }
+
+#ifdef OMAP_ENHANCEMENT
+int OMXCodec::getNumofOutputBuffers() {
+    OMX_PARAM_PORTDEFINITIONTYPE def;
+    InitOMXParams(&def);
+    def.nPortIndex = kPortIndexOutput;
+
+    status_t err = mOMX->getParameter(
+            mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+    CHECK_EQ(err, OK);
+    CHECK_EQ(def.eDomain, OMX_PortDomainVideo);
+
+    LOGD("CodecRecommended O/P BufferCnt[%ld]", def.nBufferCountActual);
+
+    return (def.nBufferCountActual);
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 

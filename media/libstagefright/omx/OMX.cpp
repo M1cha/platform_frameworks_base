@@ -566,7 +566,7 @@ sp<IOMXRenderer> OMX::createRenderer(
         const char *componentName,
         OMX_COLOR_FORMATTYPE colorFormat,
         size_t encodedWidth, size_t encodedHeight,
-        size_t displayWidth, size_t displayHeight, int32_t rotation, int isS3D) {
+        size_t displayWidth, size_t displayHeight, int32_t rotation, int isS3D, int numOfOpBuffers) {
     Mutex::Autolock autoLock(mLock);
     VideoRenderer *impl = NULL;
     void *libHandle = dlopen("libstagefrighthw.so", RTLD_NOW);
@@ -577,16 +577,16 @@ sp<IOMXRenderer> OMX::createRenderer(
                 const char *componentName,
                 OMX_COLOR_FORMATTYPE colorFormat,
                 size_t displayWidth, size_t displayHeight,
-                size_t decodedWidth, size_t decodedHeight, int isS3D);
+                size_t decodedWidth, size_t decodedHeight, int isS3D, int numOfOpBuffers);
 
         CreateRendererFunc func =
             (CreateRendererFunc)dlsym(
                     libHandle,
                     "_Z14createRendererRKN7android2spINS_8ISurfaceEEEPKc20"
-                    "OMX_COLOR_FORMATTYPEjjjji");
+                    "OMX_COLOR_FORMATTYPEjjjjii");
         if (func) {
-            impl = (*func)(surface, componentName, colorFormat,
-                    displayWidth, displayHeight, encodedWidth, encodedHeight, isS3D);
+           impl = (*func)(surface, componentName, colorFormat,
+                    displayWidth, displayHeight, encodedWidth, encodedHeight, isS3D, numOfOpBuffers);
 
             if (impl) {
                 impl = new SharedVideoRenderer(libHandle, impl);

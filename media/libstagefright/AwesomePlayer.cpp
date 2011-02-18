@@ -978,19 +978,24 @@ void AwesomePlayer::initRenderer_l() {
             // therefore they require a remote IOMXRenderer that knows how
             // to display them.
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+        //initialize the codec recommended buffers to -1
+        int32_t outputBufferCnt = -1;
+        outputBufferCnt = mVideoSource->getNumofOutputBuffers();
+        LOGD("Codec Recommended outputBuffer count %d",outputBufferCnt);
         mVideoRenderer = new AwesomeRemoteRenderer(
                 mClient.interface()->createRenderer(
                         mISurface, component,
                         (OMX_COLOR_FORMATTYPE)format,
                         decodedWidth, decodedHeight,
-                        mVideoWidth, mVideoHeight,rotationDegrees, mS3Dparams.active));
+                        mVideoWidth, mVideoHeight,rotationDegrees, mS3Dparams.active, outputBufferCnt));
 #elif defined(OMAP_ENHANCEMENT)
+        int32_t outputBufferCnt = -1;
         mVideoRenderer = new AwesomeRemoteRenderer(
                 mClient.interface()->createRenderer(
                         mISurface, component,
                         (OMX_COLOR_FORMATTYPE)format,
                         decodedWidth, decodedHeight,
-                        mVideoWidth, mVideoHeight,rotationDegrees, isS3D));
+                        mVideoWidth, mVideoHeight,rotationDegrees, isS3D, outputBufferCnt));
 #else
         mVideoRenderer = new AwesomeRemoteRenderer(
                 mClient.interface()->createRenderer(

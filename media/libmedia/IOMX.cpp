@@ -59,11 +59,11 @@ sp<IOMXRenderer> IOMX::createRenderer(
         const char *componentName,
         OMX_COLOR_FORMATTYPE colorFormat,
         size_t encodedWidth, size_t encodedHeight,
-        size_t displayWidth, size_t displayHeight, int32_t rotate, int isS3D) {
+        size_t displayWidth, size_t displayHeight, int32_t rotate, int isS3D, int numOfOpBuffers) {
     return createRenderer(
             surface->getISurface(),
             componentName, colorFormat, encodedWidth, encodedHeight,
-            displayWidth, displayHeight, rotate, isS3D);
+            displayWidth, displayHeight, rotate, isS3D, numOfOpBuffers);
 }
 #endif
 
@@ -415,7 +415,7 @@ public:
             const char *componentName,
             OMX_COLOR_FORMATTYPE colorFormat,
             size_t encodedWidth, size_t encodedHeight,
-            size_t displayWidth, size_t displayHeight, int32_t rotationDegrees, int isS3D) {
+            size_t displayWidth, size_t displayHeight, int32_t rotationDegrees, int isS3D, int numOfOpBuffers) {
         Parcel data, reply;
         data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
         data.writeStrongBinder(surface->asBinder());
@@ -425,9 +425,9 @@ public:
         data.writeInt32(encodedHeight);
         data.writeInt32(displayWidth);
         data.writeInt32(displayHeight);
-
         data.writeInt32(rotationDegrees);
-	    data.writeInt32(isS3D);
+	data.writeInt32(isS3D);
+        data.writeInt32(numOfOpBuffers);
 
         remote()->transact(CREATE_RENDERER_S3D, data, &reply);
 
@@ -789,12 +789,12 @@ status_t BnOMX::onTransact(
             size_t displayHeight = (size_t)data.readInt32();
             int32_t rotationDegrees = data.readInt32();
             size_t isS3D = (size_t)data.readInt32();
+            int numOfOpBuffers = (int)data.readInt32();
 
             sp<IOMXRenderer> renderer =
                 createRenderer(isurface, componentName, colorFormat,
                                encodedWidth, encodedHeight,
-                               displayWidth, displayHeight, rotationDegrees, isS3D);
-
+                               displayWidth, displayHeight, rotationDegrees, isS3D, numOfOpBuffers);
             reply->writeStrongBinder(renderer->asBinder());
 
             return OK;
