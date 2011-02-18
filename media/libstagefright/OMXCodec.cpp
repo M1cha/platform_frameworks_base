@@ -2322,6 +2322,8 @@ status_t OMXCodec::setVideoOutputFormat(
             video_def->nStride = ARM_4K_PAGE_SIZE;
         }
 
+        mStride = video_def->nStride ;
+
         if(mQuirks & kInterlacedOutputContent){
             video_def->eColorFormat = OMX_TI_COLOR_FormatYUV420PackedSemiPlanar_Sequential_TopBottom;
         }
@@ -2872,6 +2874,9 @@ void OMXCodec::on_message(const omx_message &msg) {
 
                 buffer->meta_data()->clear();
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+                buffer->meta_data()->setInt32(kKeyStride, mStride);
+#endif
                 buffer->meta_data()->setInt64(
                         kKeyTime, msg.u.extended_buffer_data.timestamp);
 

@@ -170,6 +170,7 @@ private:
     State mState;
 #ifdef OMAP_ENHANCEMENT
     Vector< sp<IMemory> > mExtBufferAddresses;
+    uint32_t mStride;
 #endif
     Vector<BufferInfo> mPortBuffers[2];
     PortStatus mPortStatus[2];
