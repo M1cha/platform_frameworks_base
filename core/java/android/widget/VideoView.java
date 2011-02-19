@@ -285,7 +285,8 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
             attachMediaController();
             if(SystemProperties.OMAP_ENHANCEMENT) {
                 mOmapMMHandle.setVideoSurface(mSurfaceHolder);
-             }
+                mOmapMMHandle.setMediaPlayer(mMediaPlayer);
+            }
         } catch (IOException ex) {
             Log.w(TAG, "Unable to open content: " + mUri, ex);
             mCurrentState = STATE_ERROR;
