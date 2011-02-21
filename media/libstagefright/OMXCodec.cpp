@@ -107,7 +107,12 @@ static int Calculate_TotalRefFrames(int nWidth, int nHeight) {
 #endif
 
 #ifdef TARGET_OMAP4
+#define SUPPORT_B_FRAMES
+#ifdef SUPPORT_B_FRAMES
+#define OMX_NUM_B_FRAMES 2
+#else
 #define OMX_NUM_B_FRAMES 0
+#endif
 #define OUTPUT_BUFFER_COUNT 2
 #define INPUT_BUFFER_COUNT 2
 #endif
@@ -1550,7 +1555,11 @@ void OMXCodec::setVideoInputFormat(
     def.nBufferCountActual = INPUT_BUFFER_COUNT;
     if(!strcmp(mComponentName,"OMX.TI.DUCATI1.VIDEO.H264E"))
     {
-        def.nBufferCountActual = 2; //OMX_NUM_B_FRAMES + 1;;
+#ifdef SUPPORT_B_FRAMES
+        def.nBufferCountActual = OMX_NUM_B_FRAMES + 1;;
+#else
+        def.nBufferCountActual = 2;
+#endif
     }
 #else
     video_def->nSliceHeight = sliceHeight;
@@ -2037,15 +2046,19 @@ status_t OMXCodec::setupAVCEncoderParameters(const sp<MetaData>& meta) {
     h264type.nSliceHeaderSpacing = 0;
 
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
-    h264type.nBFrames = 0; //OMX_NUM_B_FRAMES;   // No B frames support yet
-    h264type.nPFrames = setPFramesSpacing(iFramesInterval, frameRate) - 1;
+    h264type.nBFrames = OMX_NUM_B_FRAMES;
+    h264type.nPFrames = setPFramesSpacing(iFramesInterval, frameRate);
+
+#ifdef SUPPORT_B_FRAMES
     int32_t remainder = h264type.nPFrames % (OMX_NUM_B_FRAMES + 1);
     if(remainder)
     {
-        //LOGD("h264type.nPFrames=%d", h264type.nPFrames);
-        //h264type.nPFrames = h264type.nPFrames - remainder;
-        //LOGD("adjusted to h264type.nPFrames=%d", h264type.nPFrames);
+        LOGD("h264type.nPFrames=%d", h264type.nPFrames);
+        h264type.nPFrames = h264type.nPFrames - remainder;
+        LOGD("adjusted to h264type.nPFrames=%d", h264type.nPFrames);
     }
+#endif
+
 #else
     h264type.nBFrames = 0;   // No B frames support yet
     h264type.nPFrames = setPFramesSpacing(iFramesInterval, frameRate);
