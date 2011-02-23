@@ -564,19 +564,18 @@ uint32_t OMXCodec::getComponentQuirks(
     }
 #ifdef TARGET_OMAP4
     else if(!strcmp(componentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
-        // TI Video Decoder and TI 720p Decoder must use buffers allocated
-        // by Overlay for output port. So, I cannot call OMX_AllocateBuffer
-        // on output port. I must use OMX_UseBuffer on input port to ensure
-        // 128 byte alignment.
+        // Depending on the usecase, we need to call AllocateBuffer/UseBuffer
+        // on output port. Here, we initialize it to AllocateBuffer. When we receive
+        // the overlay buffers, we remove the quirk kRequiresAllocateBufferOnOutputPorts.
+        // For Gallery Playback, we call UseBuffer and for all other scenarios (flash
+        // playback, stagefright tests, thumbnail generation), we call AllocateBuffer
+        // on output ports.
         quirks |= kRequiresAllocateBufferOnInputPorts;
+        quirks |= kRequiresAllocateBufferOnOutputPorts;
 
         if(flags & kPreferThumbnailMode)
         {
             quirks |= OMXCodec::kThumbnailMode;
-        }
-
-        if(flags & kPreferAllocateBufferOnOutputPorts) {
-                quirks |= OMXCodec::kRequiresAllocateBufferOnOutputPorts;
         }
 
         if(flags & kPreferInterlacedOutputContent) {
@@ -2310,30 +2309,17 @@ status_t OMXCodec::setVideoOutputFormat(
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
 
     if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
-        //update nStride - a strict requirement in 1.16 Ducati rls. Also Thumbnail is 1D buffer.
-        //Also in case of Stage fright command line tests 1D output buffer is used when we
-        //allocate buffers on output port
-        if((mQuirks & OMXCodec::kThumbnailMode) ||
-           (mQuirks & OMXCodec::kRequiresAllocateBufferOnOutputPorts)){
-            //Thumbnail usecase
-            //Stride has to be padded Width for 1D output buffer
 
-            OMX_CONFIG_RECTTYPE tParamStruct;
-            InitOMXParams(&tParamStruct);
-            tParamStruct.nPortIndex = kPortIndexOutput;
+        OMX_CONFIG_RECTTYPE tParamStruct;
+        InitOMXParams(&tParamStruct);
+        tParamStruct.nPortIndex = kPortIndexOutput;
 
-            err = mOMX->getParameter(
-                    mNode, (OMX_INDEXTYPE)OMX_TI_IndexParam2DBufferAllocDimension, &tParamStruct, sizeof(tParamStruct));
+        err = mOMX->getParameter(
+                mNode, (OMX_INDEXTYPE)OMX_TI_IndexParam2DBufferAllocDimension, &tParamStruct, sizeof(tParamStruct));
 
-            CHECK_EQ(err, OK);
+        CHECK_EQ(err, OK);
 
-            video_def->nStride = tParamStruct.nWidth;
-        }
-        else{
-            //Video playback usecase
-            video_def->nStride = ARM_4K_PAGE_SIZE;
-        }
-
+        video_def->nStride = tParamStruct.nWidth;
         mStride = video_def->nStride ;
 
         if(mQuirks & kInterlacedOutputContent){
@@ -4168,6 +4154,10 @@ sp<MetaData> OMXCodec::getFormat() {
 void OMXCodec::setBuffers(Vector< sp<IMemory> > mBufferAddresses){
     mExtBufferAddresses = mBufferAddresses;
 
+#ifdef TARGET_OMAP4
+    //Dont allocate buffers. Use the one provided.
+    mQuirks &= ~kRequiresAllocateBufferOnOutputPorts;
+
     OMX_PARAM_PORTDEFINITIONTYPE def;
     InitOMXParams(&def);
     def.nPortIndex = kPortIndexOutput;
@@ -4187,10 +4177,13 @@ void OMXCodec::setBuffers(Vector< sp<IMemory> > mBufferAddresses){
 
     video_def->nFrameWidth = width;
     video_def->nFrameHeight = height;
+    video_def->nStride = ARM_4K_PAGE_SIZE;
+    mStride = video_def->nStride;
 
     err = mOMX->setParameter(
                  mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
     CHECK_EQ(err, OK);
+#endif
 }
 #endif
 

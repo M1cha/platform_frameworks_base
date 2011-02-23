@@ -40,8 +40,7 @@ struct OMXCodec : public MediaSource,
         kClientNeedsFramebuffer  = 4,
 #ifdef OMAP_ENHANCEMENT
         kPreferThumbnailMode               = 0x8,
-        kPreferAllocateBufferOnOutputPorts = 0x10,
-        kPreferInterlacedOutputContent     = 0x20,
+        kPreferInterlacedOutputContent     = 0x10,
         MAX_RESOLUTION = 414720, // video resolution for TI Vid Dec
 #endif
     };
