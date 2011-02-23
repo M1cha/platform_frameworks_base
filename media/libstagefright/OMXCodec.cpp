@@ -2346,7 +2346,9 @@ status_t OMXCodec::setVideoOutputFormat(
     if(!(mQuirks & OMXCodec::kThumbnailMode)){
             //playback usecase. Calculate the buffer count to take display optimal buffer count into account
             //Note: this is applicable for both ducati and h/w codecs
-            def.nBufferCountActual = def.nBufferCountActual + (2 * NUM_BUFFERS_TO_BE_QUEUED_FOR_OPTIMAL_PERFORMANCE);
+            //def.nBufferCountMin    => minimum no of buffers required on a port (communicated by codec)
+            //def.nBufferCountActual => actual no. of buffers allocated on a port (communicated to codec)
+            def.nBufferCountActual = def.nBufferCountMin + (2 * NUM_BUFFERS_TO_BE_QUEUED_FOR_OPTIMAL_PERFORMANCE);
     }
 #endif
     video_def->nFrameWidth = width;
