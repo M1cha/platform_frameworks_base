@@ -533,6 +533,14 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
                     mMediaController.show();
                 }
             }
+            else if (SystemProperties.OMAP_ENHANCEMENT) {
+                if (mMediaPlayer != null && hasValidSize && (mTargetState == STATE_PAUSED)) {
+                    if (mMediaController != null) {
+                        if(mMediaController.isShowing()) mMediaController.hide();
+                        mMediaController.show();
+                    }
+                }
+            }
         }
 
         public void surfaceCreated(SurfaceHolder holder)
