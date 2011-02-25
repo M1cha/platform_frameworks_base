@@ -39,11 +39,19 @@ const char fb1Overlays [PATH_MAX] = "/sys/class/graphics/fb1/overlays";
 const char fb0FitToScreenOption[PATH_MAX] = "/sys/class/graphics/fb0/fit_to_screen";
 const char overlay1ManagerName[PATH_MAX] = "/sys/devices/platform/omapdss/overlay1/manager";
 const char overlay1ManagerEnabled[PATH_MAX] = "/sys/devices/platform/omapdss/overlay1/enabled";
+const char overlay1ZOrder[PATH_MAX] = "/sys/devices/platform/omapdss/overlay1/zorder";
 
 enum displayId {
     DISPLAYID_NONE = -1,
     DISPLAYID_LCDSECONDARY = 1,
     DISPLAYID_TVHDMI = 2,
+};
+
+enum OverlayZorder {
+    OMAP_DSS_OVL_ZORDER_0 = 0x0,
+    OMAP_DSS_OVL_ZORDER_1 = 0x1,
+    OMAP_DSS_OVL_ZORDER_2 = 0x2,
+    OMAP_DSS_OVL_ZORDER_3 = 0x3,
 };
 
 /*
@@ -127,6 +135,14 @@ static void UiCloningService_CloneUiToDisplay(JNIEnv* env, jclass clazz, int dis
             LOGE("Failed to set fb0/fit_to_screen = 1");
             goto end;
         }
+
+        char overlay1ZOrderValue[5];
+        sprintf(overlay1ZOrderValue, "%d", OMAP_DSS_OVL_ZORDER_0);
+        if (sysfile_write(overlay1ZOrder, overlay1ZOrderValue, sizeof("1")) < 0) {
+            LOGE("Failed to set overlay1/zorder = 0");
+            goto end;
+        }
+
         if (sysfile_write(overlay1ManagerEnabled, "1", sizeof("1")) < 0) {
             LOGE("Failed to set overlay1/enabled = 1");
             goto end;
