@@ -36,7 +36,7 @@
 #include "include/ESDS.h"
 
 #if defined(OMAP_ENHANCEMENT) && (TARGET_OMAP4)
-//#define NPA_BUFFERS
+#define NPA_BUFFERS
 #endif
 
 #include <binder/IServiceManager.h>
@@ -3101,15 +3101,39 @@ void OMXCodec::onCmdComplete(OMX_COMMANDTYPE cmd, OMX_U32 data) {
                              ((mQuirks & OMXCodec::kThumbnailMode) ||
                               (mQuirks & OMXCodec::kRequiresAllocateBufferOnOutputPorts)))) /* Any Ducati codec non-overlay usecase */
                     {
-                      LOGD("OMX_CommandPortDisable Done. Reenabling port for non-overlay playback usecase");
-                    enablePortAsync(portIndex);
+                        LOGD("OMX_CommandPortDisable Done. Reenabling port for non-overlay playback usecase");
 
-                    status_t err = allocateBuffersOnPort(portIndex);
-                    CHECK_EQ(err, OK);
-                }else
-                {
+                        /*Since we are mostly dealing 1D buffers here,
+                          nStride has to be updaetd as nFrameWidth will change on portreconfig
+                          */
+                        OMX_PARAM_PORTDEFINITIONTYPE def;
+                        InitOMXParams(&def);
+                        def.nPortIndex = kPortIndexOutput;
+
+                        status_t err = mOMX->getParameter(
+                              mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+                        CHECK_EQ(err, OK);
+
+                        OMX_VIDEO_PORTDEFINITIONTYPE *video_def = &def.format.video;
+
+                        int32_t padded_width;
+                        CHECK(mOutputFormat->findInt32(kKeyWidth, &padded_width));
+                        video_def->nStride = padded_width;
+
+                        LOGE("Updating video_def->nStride with new width %d", (int) video_def->nStride);
+
+                        err = mOMX->setParameter(
+                                     mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+
+
+                        enablePortAsync(portIndex);
+
+                        err = allocateBuffersOnPort(portIndex);
+                        CHECK_EQ(err, OK);
+                   }else
+                   {
                       LOGD("OMX_CommandPortDisable Done. Not enabling port till overlay buffers are available");
-                }
+                   }
 #else
                 enablePortAsync(portIndex);
 
@@ -3343,6 +3367,12 @@ void OMXCodec::onPortSettingsChanged(OMX_U32 portIndex) {
 
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
     LOGD("[%s] PORT_SETTINGS_CHANGED(%d)",mComponentName, (int)portIndex);
+
+#if defined (NPA_BUFFERS)
+    //reset NPA buffer counter on port reconfig.
+    mNumberOfNPABuffersSent = 0;
+#endif
+
     if( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER"))
     {
         /* update new port settings, since renderer needs new WxH for new buffers */
@@ -4334,9 +4364,22 @@ status_t OMXCodec::read(
                 fillOutputBuffers();
             }
         }
-        mBufferFilled.wait(mLock);
-    }
 
+#if defined (NPA_BUFFERS)
+        if( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER") &&
+            (mQuirks & OMXCodec::kThumbnailMode)){
+           if(mNumberOfNPABuffersSent){
+               /*wait if atleast one filledbuffer is sent in NPA mode*/
+               mBufferFilled.wait(mLock);
+           }
+       }else{
+           mBufferFilled.wait(mLock);
+       }
+#else
+       mBufferFilled.wait(mLock);
+#endif
+    }
+    /*see if we received a port reconfiguration */
     if (mState == RECONFIGURING) {
         mOutputPortSettingsHaveChanged = false;
         return INFO_FORMAT_CHANGED;
