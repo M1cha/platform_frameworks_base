@@ -576,6 +576,9 @@ uint32_t OMXCodec::getComponentQuirks(
         if(flags & kPreferThumbnailMode)
         {
             quirks |= OMXCodec::kThumbnailMode;
+#ifdef NPA_BUFFERS
+            quirks &= ~kRequiresAllocateBufferOnOutputPorts;
+#endif
         }
 
         if(flags & kPreferInterlacedOutputContent) {
