@@ -130,7 +130,7 @@ private:
 public:
 #ifdef OMAP_ENHANCEMENT
     // Method to share externally allocated buffers with the Codec.
-    virtual void setBuffers(Vector< sp<IMemory> > mBufferAddresses) {}
+    virtual void setBuffers(Vector< sp<IMemory> > mBufferAddresse, bool portReconfig = false) {}
     // Method used to reset read position without consuming the buffer
     virtual int64_t setSeekTo(const ReadOptions *options) { return 0; }
     virtual int getNumofOutputBuffers() {return -1; }

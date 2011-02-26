@@ -36,7 +36,7 @@
 #include "include/ESDS.h"
 
 #if defined(OMAP_ENHANCEMENT) && (TARGET_OMAP4)
-#define NPA_BUFFERS
+//#define NPA_BUFFERS
 #endif
 
 #include <binder/IServiceManager.h>
@@ -2055,9 +2055,9 @@ status_t OMXCodec::setupAVCEncoderParameters(const sp<MetaData>& meta) {
     int32_t remainder = h264type.nPFrames % (OMX_NUM_B_FRAMES + 1);
     if(remainder)
     {
-        LOGD("h264type.nPFrames=%d", h264type.nPFrames);
+        LOGD("h264type.nPFrames=%d", (int) h264type.nPFrames);
         h264type.nPFrames = h264type.nPFrames - remainder;
-        LOGD("adjusted to h264type.nPFrames=%d", h264type.nPFrames);
+        LOGD("adjusted to h264type.nPFrames=%d", (int) h264type.nPFrames);
     }
 #endif
 
@@ -2831,6 +2831,12 @@ void OMXCodec::on_message(const omx_message &msg) {
                      "a FILL_BUFFER_DONE.", buffer);
             }
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4) && defined (NPA_BUFFERS)
+        if( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER") &&
+            (mQuirks & OMXCodec::kThumbnailMode) ){
+            mNumberOfNPABuffersSent--;
+        }
+#endif
             info->mOwnedByComponent = false;
 
             if (mPortStatus[kPortIndexOutput] == DISABLING) {
@@ -3089,10 +3095,27 @@ void OMXCodec::onCmdComplete(OMX_COMMANDTYPE cmd, OMX_U32 data) {
                 mOutputPortSettingsHaveChanged =
                     formatHasNotablyChanged(oldOutputFormat, mOutputFormat);
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+                if( strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")  /* Any non-Ducati codec */
+                     || ( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")  &&
+                             ((mQuirks & OMXCodec::kThumbnailMode) ||
+                              (mQuirks & OMXCodec::kRequiresAllocateBufferOnOutputPorts)))) /* Any Ducati codec non-overlay usecase */
+                    {
+                      LOGD("OMX_CommandPortDisable Done. Reenabling port for non-overlay playback usecase");
+                    enablePortAsync(portIndex);
+
+                    status_t err = allocateBuffersOnPort(portIndex);
+                    CHECK_EQ(err, OK);
+                }else
+                {
+                      LOGD("OMX_CommandPortDisable Done. Not enabling port till overlay buffers are available");
+                }
+#else
                 enablePortAsync(portIndex);
 
                 status_t err = allocateBuffersOnPort(portIndex);
                 CHECK_EQ(err, OK);
+#endif
             }
             break;
         }
@@ -3318,6 +3341,14 @@ void OMXCodec::onPortSettingsChanged(OMX_U32 portIndex) {
     CHECK_EQ(portIndex, kPortIndexOutput);
     setState(RECONFIGURING);
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    LOGD("[%s] PORT_SETTINGS_CHANGED(%d)",mComponentName, (int)portIndex);
+    if( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER"))
+    {
+        /* update new port settings, since renderer needs new WxH for new buffers */
+        initOutputFormat(mSource->getFormat());
+    }
+#endif
     if (mQuirks & kNeedsFlushBeforeDisable) {
         if (!flushPortAsync(portIndex)) {
             onCmdComplete(OMX_CommandFlush, portIndex);
@@ -3356,7 +3387,6 @@ bool OMXCodec::flushPortAsync(OMX_U32 portIndex) {
 
 void OMXCodec::disablePortAsync(OMX_U32 portIndex) {
     CHECK(mState == EXECUTING || mState == RECONFIGURING);
-
     CHECK_EQ(mPortStatus[portIndex], ENABLED);
     mPortStatus[portIndex] = DISABLING;
 
@@ -4154,38 +4184,59 @@ sp<MetaData> OMXCodec::getFormat() {
 }
 
 #ifdef OMAP_ENHANCEMENT
-void OMXCodec::setBuffers(Vector< sp<IMemory> > mBufferAddresses){
+void OMXCodec::setBuffers(Vector< sp<IMemory> > mBufferAddresses, bool portReconfig){
     mExtBufferAddresses = mBufferAddresses;
 
 #ifdef TARGET_OMAP4
-    //Dont allocate buffers. Use the one provided.
-    mQuirks &= ~kRequiresAllocateBufferOnOutputPorts;
+    if(!portReconfig){
 
-    OMX_PARAM_PORTDEFINITIONTYPE def;
-    InitOMXParams(&def);
-    def.nPortIndex = kPortIndexOutput;
+        //Dont allocate buffers. Use the one provided.
+        mQuirks &= ~kRequiresAllocateBufferOnOutputPorts;
 
-    status_t err = mOMX->getParameter(
-                    mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
-    CHECK_EQ(err, OK);
-    //reconfigure codec with the number of buffers actually got created
-    //by the Hardware Renderer
-    def.nBufferCountActual = mExtBufferAddresses.size();
-    OMX_VIDEO_PORTDEFINITIONTYPE *video_def = &def.format.video;
-    //Set the proper parameters again, as it is marshalled in Get_Parameter()
-    sp<MetaData> VideoFormat = mSource->getFormat();
-    int32_t width, height;
-    VideoFormat->findInt32(kKeyWidth, &width);
-    VideoFormat->findInt32(kKeyHeight, &height);
+        OMX_PARAM_PORTDEFINITIONTYPE def;
+        InitOMXParams(&def);
+        def.nPortIndex = kPortIndexOutput;
 
-    video_def->nFrameWidth = width;
-    video_def->nFrameHeight = height;
-    video_def->nStride = ARM_4K_PAGE_SIZE;
-    mStride = video_def->nStride;
+        status_t err = mOMX->getParameter(
+                        mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+        CHECK_EQ(err, OK);
+        //reconfigure codec with the number of buffers actually got created
+        //by the Hardware Renderer
+        def.nBufferCountActual = mExtBufferAddresses.size();
 
-    err = mOMX->setParameter(
-                 mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
-    CHECK_EQ(err, OK);
+        //Update stride for 2D buffers
+        OMX_VIDEO_PORTDEFINITIONTYPE *video_def = &def.format.video;
+        video_def->nStride = ARM_4K_PAGE_SIZE;
+        mStride = video_def->nStride;
+
+        err = mOMX->setParameter(
+                     mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+        CHECK_EQ(err, OK);
+    }else{
+
+        if(portReconfig && mState!= RECONFIGURING)
+        {
+            LOGE("Extra setbuffer(portreconfig=true) call when port reconfigure is done. REPORT THIS");
+            return;
+        }
+
+        //disable the port if it enabled
+        if (mPortStatus[kPortIndexOutput] == ENABLED) {
+            disablePortAsync(kPortIndexOutput);
+        }
+
+        int32_t retrycount = 0;
+        while(mPortStatus[kPortIndexOutput] == DISABLING){
+            usleep(2000); // 2 mS
+            LOGD("(%d) Output port is DISABLING.. Waiting for port to be disabled.. %d",retrycount,mPortStatus[kPortIndexOutput] );
+            retrycount++;
+            CHECK(retrycount < 100);
+        }
+
+        /*output port is not enabled for ducati codecs, delayed till we get buffers here */
+        enablePortAsync(kPortIndexOutput);
+        allocateBuffersOnPort(kPortIndexOutput);
+    }
 #endif
 }
 #endif
@@ -4199,6 +4250,15 @@ status_t OMXCodec::read(
     if (mState != EXECUTING && mState != RECONFIGURING) {
         return UNKNOWN_ERROR;
     }
+
+#if defined(OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    /*Stagefright port-reconfiguration logic is based on mOutputPortSettingsHaveChanged, which will be updated very late when port is reenabled */
+    /*Detect port-config event quickly so overlay buffers will be available upfront*/
+    if (mState == RECONFIGURING) {
+         mOutputPortSettingsHaveChanged = false;
+         return INFO_FORMAT_CHANGED;
+    }
+#endif
 
     bool seeking = false;
     int64_t seekTimeUs;
@@ -4265,16 +4325,27 @@ status_t OMXCodec::read(
         }
     }
 
-    while (mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
 #if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
+    while (mState != RECONFIGURING && mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
     //only for OMAP4 Video decoder we shall check the buffers which are not with component
     if (!strcmp("OMX.TI.DUCATI1.VIDEO.DECODER", mComponentName)) {
         CODEC_LOGV("READ LOCKED BUFFER QUEUE EMPTY FLAG : %d",mFilledBuffers.empty());
-        fillOutputBuffers();
+        if (mState == EXECUTING) {
+                fillOutputBuffers();
+            }
         }
-#endif
         mBufferFilled.wait(mLock);
     }
+
+    if (mState == RECONFIGURING) {
+        mOutputPortSettingsHaveChanged = false;
+        return INFO_FORMAT_CHANGED;
+    }
+#else
+    while (mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
+        mBufferFilled.wait(mLock);
+    }
+#endif
 
     if (mState == ERROR) {
         return UNKNOWN_ERROR;
@@ -4286,8 +4357,16 @@ status_t OMXCodec::read(
 
     if (mOutputPortSettingsHaveChanged) {
         mOutputPortSettingsHaveChanged = false;
-
+#if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
+        //for ducati codecs, to assert port reconfiguration immediately (so as to allocate overlay buffers upfront), we use mState as above.
+        //so, mOutputPortSettingsHaveChanged conditon check will result in redundant INFO_FORMAT_CHANGED event. Just proceed now.
+        //also, mOutputPortSettingsHaveChanged will be updated very late on port reenable, by the time overlay buffers are available and port enabled => just go ahead.
+        if (strcmp("OMX.TI.DUCATI1.VIDEO.DECODER", mComponentName)){
+            return INFO_FORMAT_CHANGED;
+        }
+#else
         return INFO_FORMAT_CHANGED;
+#endif
     }
 
     size_t index = *mFilledBuffers.begin();
@@ -4429,15 +4508,15 @@ static const char *videoCompressionFormatString(OMX_VIDEO_CODINGTYPE type) {
 
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
 
-    if (type == OMX_VIDEO_CodingVP6) {
+    if (type == (OMX_VIDEO_CODINGTYPE) OMX_VIDEO_CodingVP6) {
         return kNames[9];
     }
 
-    if (type == OMX_VIDEO_CodingVP7) {
+    if (type == (OMX_VIDEO_CODINGTYPE) OMX_VIDEO_CodingVP7) {
         return kNames[10];
     }
 #endif
-    
+
     size_t numNames = sizeof(kNames) / sizeof(kNames[0]);
 
     if (type < 0 || (size_t)type >= numNames) {
@@ -4860,6 +4939,9 @@ void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
             CHECK_EQ(err, OK);
             mOutputFormat->setInt32(kKeyWidth, tParamStruct.nWidth);
             mOutputFormat->setInt32(kKeyHeight, tParamStruct.nHeight);
+            LOGD("initOutputFormat WxH %dx%d Padded %dx%d ",
+                        (int) video_def->nFrameWidth, (int) video_def->nFrameHeight,
+                        (int) tParamStruct.nWidth, (int) tParamStruct.nHeight);
         }
 #endif
             break;

@@ -53,7 +53,11 @@ StagefrightMetadataRetriever::~StagefrightMetadataRetriever() {
 }
 
 status_t StagefrightMetadataRetriever::setDataSource(const char *uri) {
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    LOGD("setDataSource(%s)", uri);
+#else
     LOGV("setDataSource(%s)", uri);
+#endif
 
     mParsedMetaData = false;
     mMetaData.clear();
@@ -177,7 +181,18 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
             buffer->release();
             buffer = NULL;
         }
+
         err = decoder->read(&buffer, &options);
+#ifdef OMAP_ENHANCEMENT
+        if(err == INFO_FORMAT_CHANGED)
+        {
+            int32_t w1,h1;
+            decoder->getFormat()->findInt32(kKeyWidth, &w1);
+            decoder->getFormat()->findInt32(kKeyHeight, &h1);
+            LOGD("Got portreconfig event. New WxH %dx%d. wait 5mS for port to be enabled",w1,h1);
+            usleep(5000); //sleep 5mS for port disable-enable to complete
+        }
+#endif
         options.clearSeekTo();
     } while (err == INFO_FORMAT_CHANGED
              || (buffer != NULL && buffer->range_length() == 0));

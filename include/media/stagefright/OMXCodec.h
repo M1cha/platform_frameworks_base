@@ -70,7 +70,7 @@ struct OMXCodec : public MediaSource,
 
     virtual sp<MetaData> getFormat();
 #ifdef OMAP_ENHANCEMENT
-    virtual void setBuffers(Vector< sp<IMemory> > mBufferAddresses);
+    virtual void setBuffers(Vector< sp<IMemory> > mBufferAddresses, bool portReconfig = false);
     virtual int getNumofOutputBuffers();
 #endif
     virtual status_t read(

@@ -108,8 +108,8 @@ struct AwesomeRemoteRenderer : public AwesomeRenderer {
          mTarget->set_s3d_frame_layout(s3d_mode, s3d_fmt, s3d_order, s3d_subsampling);
     }
 
-    virtual void resizeRenderer(uint32_t width, uint32_t height) {
-        mTarget->resizeRenderer(width, height);
+    virtual void resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) {
+        mTarget->resizeRenderer(width, height, buffercount);
     }
 
     virtual void requestRendererClone(bool enable) {
@@ -154,8 +154,8 @@ struct AwesomeLocalRenderer : public AwesomeRenderer {
     virtual Vector< sp<IMemory> > getBuffers(){
         return mTarget->getBuffers();
     }
-    virtual void resizeRenderer(uint32_t width, uint32_t height) {
-        mTarget->resizeRenderer(width, height);
+    virtual void resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) {
+        mTarget->resizeRenderer(width, height, buffercount);
     }
     virtual void requestRendererClone(bool enable) {
         mTarget->requestRendererClone(enable);
@@ -351,6 +351,9 @@ status_t AwesomePlayer::setDataSource(
 
 status_t AwesomePlayer::setDataSource_l(
         const char *uri, const KeyedVector<String8, String8> *headers) {
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    LOGD("setDataSource_l(%s)", uri);
+#endif
     reset_l();
 
     mUri = uri;
@@ -849,6 +852,12 @@ status_t AwesomePlayer::play_l() {
             if (mVideoRenderer != NULL) {
                 mVideoRendererIsPreview = false;
                 initRenderer_l();
+#ifdef OMAP_ENHANCEMENT
+            if (mVideoRenderer != NULL) {
+                // Share overlay buffers with video decoder.
+                mVideoSource->setBuffers(mVideoRenderer->getBuffers(), true);
+            }
+#endif
             }
             CHECK(mFirstVideoBuffer == NULL);
             mFirstVideoBufferResult = OK;
@@ -952,13 +961,18 @@ void AwesomePlayer::initRenderer_l() {
         CHECK(meta->findInt32(kKeyWidth, &decodedWidth));
         CHECK(meta->findInt32(kKeyHeight, &decodedHeight));
 #ifdef OMAP_ENHANCEMENT
+        LOGD(" initRenderer_l %dx%d",decodedWidth,decodedHeight );
         if (mVideoRenderer != NULL) {
             //we cant destroy overlay based renderer here,as the overlay has 2 handles
             //(1) from media server process (the current process)
             //(2) from surface flinger process.
             // Hence, we have to resize the renderer for new dimensions than dstroying and 
             // re-creating
-            mVideoRenderer->resizeRenderer(decodedWidth, decodedHeight);
+
+            uint32_t outputBufferCnt = -1;
+            outputBufferCnt = mVideoSource->getNumofOutputBuffers();
+            LOGD("Codec Recommended outputBuffer count after portreconfig %d",outputBufferCnt);
+            mVideoRenderer->resizeRenderer(decodedWidth, decodedHeight,outputBufferCnt);
             return;
         }
 #endif
@@ -1447,6 +1461,12 @@ void AwesomePlayer::onVideoEvent() {
                     if (mVideoRenderer != NULL) {
                         mVideoRendererIsPreview = false;
                         initRenderer_l();
+#ifdef OMAP_ENHANCEMENT
+                    if (mVideoRenderer != NULL) {
+                        // Share overlay buffers with video decoder.
+                        mVideoSource->setBuffers(mVideoRenderer->getBuffers(), true);
+                    }
+#endif
                     }
                     continue;
                 }
@@ -1561,6 +1581,12 @@ void AwesomePlayer::onVideoEvent() {
         mVideoRendererIsPreview = false;
 
         initRenderer_l();
+#ifdef OMAP_ENHANCEMENT
+    if (mVideoRenderer != NULL) {
+        // Share overlay buffers with video decoder.
+        mVideoSource->setBuffers(mVideoRenderer->getBuffers(), true);
+    }
+#endif
     }
 
     if (mVideoRenderer != NULL) {
@@ -1953,7 +1979,7 @@ void AwesomePlayer::onPrepareAsyncEvent() {
                     initRenderer_l();
                     if (mVideoRenderer != NULL) {
                         // Share overlay buffers with video decoder.
-                        mVideoSource->setBuffers(mVideoRenderer->getBuffers());
+                        mVideoSource->setBuffers(mVideoRenderer->getBuffers(), false);
                     }
                 }
 

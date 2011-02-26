@@ -468,8 +468,8 @@ struct SharedVideoRenderer : public VideoRenderer {
     mObj->set_s3d_frame_layout(s3d_mode, s3d_fmt, s3d_order, s3d_subsampling);
      }
 
-    virtual void resizeRenderer(uint32_t width, uint32_t height) {
-          mObj->resizeRenderer(width, height);
+    virtual void resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) {
+          mObj->resizeRenderer(width, height, buffercount);
     }
 virtual void requestRendererClone(bool enable) {
     mObj->requestRendererClone(enable);
@@ -560,7 +560,7 @@ sp<IOMXRenderer> OMX::createRenderer(
     return new OMXRenderer(impl);
 }
 
-#ifdef OMAP_ENHANCEMENT 
+#ifdef OMAP_ENHANCEMENT
 sp<IOMXRenderer> OMX::createRenderer(
         const sp<ISurface> &surface,
         const char *componentName,
@@ -644,8 +644,8 @@ void OMXRenderer::set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint
     mImpl->set_s3d_frame_layout(s3d_mode, s3d_fmt, s3d_order, s3d_subsampling);
 }
 
-void OMXRenderer::resizeRenderer(uint32_t width, uint32_t height) {
-    mImpl->resizeRenderer(width, height);
+void OMXRenderer::resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) {
+    mImpl->resizeRenderer(width, height, buffercount);
 }
 
 void OMXRenderer::requestRendererClone(bool enable) {
