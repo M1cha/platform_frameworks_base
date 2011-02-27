@@ -1066,10 +1066,10 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
             /* Update proper Profile, Level, No. of Reference frames.
                This will aid in less (tiler) memory utilization by ducati side */
             if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
-				/* save video FPS */
-				if (!(meta->findInt32(kKeyVideoFPS, &mVideoFPS))) {
-					mVideoFPS = 30; //default value in case of FPS data not found
-				}
+                /* save video FPS */
+                if (!(meta->findInt32(kKeyVideoFPS, &mVideoFPS))) {
+                    mVideoFPS = 30; //default value in case of FPS data not found
+                }
 
                 int32_t vprofile,vlevel,vinterlaced,vnumrefframes;
 
@@ -3377,6 +3377,19 @@ void OMXCodec::onPortSettingsChanged(OMX_U32 portIndex) {
     {
         /* update new port settings, since renderer needs new WxH for new buffers */
         initOutputFormat(mSource->getFormat());
+
+        /* For thumbnail color conversion routine will require unpadded display WxH
+           update it in video-source meta data here, to be used later during color conversion */
+        OMX_PARAM_PORTDEFINITIONTYPE def;
+        InitOMXParams(&def);
+        def.nPortIndex = kPortIndexOutput;
+        status_t err = mOMX->getParameter(
+                mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+        CHECK_EQ(err, OK);
+        OMX_VIDEO_PORTDEFINITIONTYPE *video_def = &def.format.video;
+        mSource->getFormat()->setInt32(kKeyWidth, video_def->nFrameWidth);
+        mSource->getFormat()->setInt32(kKeyHeight, video_def->nFrameHeight);
+        LOGI("Updated source WxH %dx%d", (int) video_def->nFrameWidth, (int) video_def->nFrameHeight);
     }
 #endif
     if (mQuirks & kNeedsFlushBeforeDisable) {

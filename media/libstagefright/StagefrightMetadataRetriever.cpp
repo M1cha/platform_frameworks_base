@@ -140,17 +140,6 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
         OMXCodec::Create(
                 client->interface(), source->getFormat(), false, source,
                 NULL, flags | OMXCodec::kClientNeedsFramebuffer);
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
-    sp<MetaData> source_meta = source->getFormat();
-    int32_t format;
-    const char *component;
-
-    //OMAP4 ducati codecs => displaywidth,displayheight are lost due to padded fields by codec.
-    //save them here.
-    int32_t displayWidth, displayHeight;
-    CHECK(source_meta->findInt32(kKeyWidth, &displayWidth));
-    CHECK(source_meta->findInt32(kKeyHeight, &displayHeight));
-#endif
 
     if (decoder.get() == NULL) {
         LOGV("unable to instantiate video decoder.");
@@ -250,6 +239,18 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
     int32_t srcFormat;
     CHECK(meta->findInt32(kKeyColorFormat, &srcFormat));
+
+    sp<MetaData> source_meta = source->getFormat();
+    int32_t format;
+    const char *component;
+
+    //OMAP4 ducati codecs => displaywidth,displayheight are lost due to padded fields by codec.
+    //Get display WxH from Video track source MetaData.
+    //In case of port reconfig event, we will have new updated frame WxH
+    int32_t displayWidth, displayHeight;
+    CHECK(source_meta->findInt32(kKeyWidth, &displayWidth));
+    CHECK(source_meta->findInt32(kKeyHeight, &displayHeight));
+    LOGD("VideoFrame WxH %dx%d", displayWidth, displayHeight);
 
     if(((OMX_COLOR_FORMATTYPE)srcFormat == OMX_COLOR_FormatYUV420PackedSemiPlanar) ||
        ((OMX_COLOR_FORMATTYPE)srcFormat == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar_Sequential_TopBottom)){
