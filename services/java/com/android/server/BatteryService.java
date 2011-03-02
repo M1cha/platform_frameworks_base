@@ -182,15 +182,31 @@ class BatteryService extends Binder {
     }
 
     private final void shutdownIfNoPower() {
-        /* NOT IMPLEMENTED */
+        // shut down gracefully if our battery is critically low and we are not powered.
+        // wait until the system has booted before attempting to display the shutdown dialog.
+        if (mBatteryLevel == 0 && !isPowered() && ActivityManagerNative.isSystemReady()) {
+            Intent intent = new Intent(Intent.ACTION_REQUEST_SHUTDOWN);
+            intent.putExtra(Intent.EXTRA_KEY_CONFIRM, false);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mContext.startActivity(intent);
+        }
     }
 
     private final void shutdownIfOverTemp() {
-        /* NOT IMPLEMENTED */
+        // shut down gracefully if temperature is too high (> 68.0C)
+        // wait until the system has booted before attempting to display the shutdown dialog.
+        if (mBatteryTemperature > 680 && ActivityManagerNative.isSystemReady()) {
+            Intent intent = new Intent(Intent.ACTION_REQUEST_SHUTDOWN);
+            intent.putExtra(Intent.EXTRA_KEY_CONFIRM, false);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mContext.startActivity(intent);
+        }
     }
 
+    private native void native_update();
+
     private synchronized final void update() {
-        /* NOT IMPLMENTED */
+        native_update();
 
         boolean logOutlier = false;
         long dischargeDuration = 0;
