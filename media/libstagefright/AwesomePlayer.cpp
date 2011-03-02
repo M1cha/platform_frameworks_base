@@ -790,10 +790,12 @@ void AwesomePlayer::partial_reset_l() {
 
     mVideoRenderer.clear();
 
+#ifndef OMAP_ENHANCEMENT
     if (mLastVideoBuffer) {
         mLastVideoBuffer->release();
         mLastVideoBuffer = NULL;
     }
+#endif
 
     if (mVideoBuffer) {
         mVideoBuffer->release();
@@ -2285,11 +2287,7 @@ status_t AwesomePlayer::suspend() {
     getPosition(&state->mPositionUs);
 
 #ifdef OMAP_ENHANCEMENT
-#ifdef TARGET_OMAP4
-    if(0) {   //FIXME: This caching of last frame crashes in L27x. Not used anyway, but check why.
-#else
     if (mBuffersWithRenderer.size()) {
-#endif
         size_t size = mBuffersWithRenderer[0]->range_length();
 #else
     if (mLastVideoBuffer) {
@@ -2297,18 +2295,29 @@ status_t AwesomePlayer::suspend() {
 #endif
         if (size) {
             int32_t unreadable;
+#ifdef OMAP_ENHANCEMENT
+            if (!mBuffersWithRenderer[0]->meta_data()->findInt32(
+                        kKeyIsUnreadable, &unreadable)
+                    || unreadable == 0) {
+                state->mLastVideoFrameSize = size;
+                state->mLastVideoFrame = malloc(size);
+
+#ifdef TARGET_OMAP4
+                /* FIXME: here for OMAP4 */
+#else
+                memcpy(state->mLastVideoFrame,
+                   (const uint8_t *)mBuffersWithRenderer[0]->data()
+                        + mBuffersWithRenderer[0]->range_offset(),
+                   size);
+#endif
+#else
             if (!mLastVideoBuffer->meta_data()->findInt32(
                         kKeyIsUnreadable, &unreadable)
                     || unreadable == 0) {
                 state->mLastVideoFrameSize = size;
                 state->mLastVideoFrame = malloc(size);
-#ifdef OMAP_ENHANCEMENT
-            memcpy(state->mLastVideoFrame,
-                   (const uint8_t *)mBuffersWithRenderer[0]->data()
-                        + mBuffersWithRenderer[0]->range_offset(),
-                   size);
-#else
-            memcpy(state->mLastVideoFrame,
+
+                memcpy(state->mLastVideoFrame,
                    (const uint8_t *)mLastVideoBuffer->data()
                         + mLastVideoBuffer->range_offset(),
                    size);
