@@ -428,8 +428,12 @@ ssize_t NuCachedSource2::readInternal(off_t offset, void *data, size_t size) {
 
     if (offset < mCacheOffset
             || offset >= (off_t)(mCacheOffset + mCache->totalSize())) {
+#ifndef OMAP_ENHANCEMENT
         static const off_t kPadding = 32768;
-
+#else
+        // make this value larger for high profile playback
+        static const off_t kPadding = 768 * 1024;
+#endif
         // In the presence of multiple decoded streams, once of them will
         // trigger this seek request, the other one will request data "nearby"
         // soon, adjust the seek position so that that subsequent request
