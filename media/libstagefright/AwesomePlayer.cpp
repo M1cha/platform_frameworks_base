@@ -533,7 +533,9 @@ void AwesomePlayer::reset_l() {
     delete mAudioPlayer;
     mAudioPlayer = NULL;
 
+#ifndef OMAP_ENHANCEMENT
     mVideoRenderer.clear();
+#endif
 
 #ifdef OMAP_ENHANCEMENT
     if (mBuffersWithRenderer.size()) {
@@ -587,6 +589,10 @@ void AwesomePlayer::reset_l() {
         }
         IPCThreadState::self()->flushCommands();
     }
+
+#ifdef OMAP_ENHANCEMENT
+    mVideoRenderer.clear();
+#endif
 
     mDurationUs = -1;
     mFlags = 0;
