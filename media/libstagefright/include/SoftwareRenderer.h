@@ -38,6 +38,8 @@ public:
 
     virtual ~SoftwareRenderer();
 
+    status_t initCheck() const;
+
     virtual void render(
             const void *data, size_t size, void *platformPrivate);
 #ifdef OMAP_ENHANCEMENT
@@ -47,6 +49,7 @@ public:
 #endif
 
 private:
+    status_t mInitCheck;
     OMX_COLOR_FORMATTYPE mColorFormat;
     ColorConverter mConverter;
     sp<ISurface> mISurface;

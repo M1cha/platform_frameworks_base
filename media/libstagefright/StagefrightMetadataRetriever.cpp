@@ -116,8 +116,10 @@ status_t StagefrightMetadataRetriever::setDataSource(
 static VideoFrame *extractVideoFrameWithCodecFlags(
         OMXClient *client,
         const sp<MetaData> &trackMeta,
-        const sp<MediaSource> &source, uint32_t flags) {
-
+        const sp<MediaSource> &source,
+        uint32_t flags,
+        int64_t frameTimeUs,
+        int seekMode) {
 #ifdef OMAP_ENHANCEMENT
     flags |= OMXCodec::kPreferThumbnailMode;
 #ifdef TARGET_OMAP4
@@ -157,11 +159,22 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
     // and spurious empty buffers.
 
     MediaSource::ReadOptions options;
+    if (seekMode < MediaSource::ReadOptions::SEEK_PREVIOUS_SYNC ||
+        seekMode > MediaSource::ReadOptions::SEEK_CLOSEST) {
+
+        LOGE("Unknown seek mode: %d", seekMode);
+        return NULL;
+    }
+
+    MediaSource::ReadOptions::SeekMode mode =
+            static_cast<MediaSource::ReadOptions::SeekMode>(seekMode);
+
     int64_t thumbNailTime;
-    if (trackMeta->findInt64(kKeyThumbnailTime, &thumbNailTime)) {
-        options.setSeekTo(thumbNailTime);
+    if (frameTimeUs < 0 && trackMeta->findInt64(kKeyThumbnailTime, &thumbNailTime)) {
+        options.setSeekTo(thumbNailTime, mode);
     } else {
         thumbNailTime = -1;
+        options.setSeekTo(frameTimeUs, mode);
     }
 
     MediaBuffer *buffer = NULL;
@@ -331,14 +344,10 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
     return frame;
 }
 
-VideoFrame *StagefrightMetadataRetriever::captureFrame() {
-    LOGV("captureFrame");
+VideoFrame *StagefrightMetadataRetriever::getFrameAtTime(
+        int64_t timeUs, int option) {
 
-    if (0 == (mMode & METADATA_MODE_FRAME_CAPTURE_ONLY)) {
-        LOGV("captureFrame disabled by mode (0x%08x)", mMode);
-
-        return NULL;
-    }
+    LOGV("getFrameAtTime: %lld us option: %d", timeUs, option);
 
     if (mExtractor.get() == NULL) {
         LOGV("no extractor.");
@@ -375,7 +384,8 @@ VideoFrame *StagefrightMetadataRetriever::captureFrame() {
 
     VideoFrame *frame =
         extractVideoFrameWithCodecFlags(
-                &mClient, trackMeta, source, OMXCodec::kPreferSoftwareCodecs);
+                &mClient, trackMeta, source, OMXCodec::kPreferSoftwareCodecs,
+                timeUs, option);
 #ifdef OMAP_ENHANCEMENT
     /*In case the first attempt have failed try a second time*/
     if (frame == NULL) {
@@ -385,14 +395,15 @@ VideoFrame *StagefrightMetadataRetriever::captureFrame() {
         trackMeta = mExtractor->getTrackMetaData(
             i, MediaExtractor::kSelectFirstSample | MediaExtractor::kIncludeExtensiveMetaData);
         /*Get the frame docoded*/
-        frame = extractVideoFrameWithCodecFlags(&mClient, trackMeta, source, 0);
+        frame = extractVideoFrameWithCodecFlags(&mClient, trackMeta, source, 0, timeUs, option);
     }
 #else
     if (frame == NULL) {
         LOGV("Software decoder failed to extract thumbnail, "
              "trying hardware decoder.");
 
-        frame = extractVideoFrameWithCodecFlags(&mClient, trackMeta, source, 0);
+        frame = extractVideoFrameWithCodecFlags(&mClient, trackMeta, source, 0,
+                        timeUs, option);
     }
 #endif
 
@@ -401,12 +412,6 @@ VideoFrame *StagefrightMetadataRetriever::captureFrame() {
 
 MediaAlbumArt *StagefrightMetadataRetriever::extractAlbumArt() {
     LOGV("extractAlbumArt (extractor: %s)", mExtractor.get() != NULL ? "YES" : "NO");
-
-    if (0 == (mMode & METADATA_MODE_METADATA_RETRIEVAL_ONLY)) {
-        LOGV("extractAlbumArt/metadata retrieval disabled by mode");
-
-        return NULL;
-    }
 
     if (mExtractor == NULL) {
         return NULL;
@@ -426,12 +431,6 @@ MediaAlbumArt *StagefrightMetadataRetriever::extractAlbumArt() {
 }
 
 const char *StagefrightMetadataRetriever::extractMetadata(int keyCode) {
-    if (0 == (mMode & METADATA_MODE_METADATA_RETRIEVAL_ONLY)) {
-        LOGV("extractAlbumArt/metadata retrieval disabled by mode");
-
-        return NULL;
-    }
-
     if (mExtractor == NULL) {
         return NULL;
     }
@@ -472,6 +471,7 @@ void StagefrightMetadataRetriever::parseMetaData() {
         { kKeyTitle, METADATA_KEY_TITLE },
         { kKeyYear, METADATA_KEY_YEAR },
         { kKeyWriter, METADATA_KEY_WRITER },
+        { kKeyCompilation, METADATA_KEY_COMPILATION },
     };
     static const size_t kNumMapEntries = sizeof(kMap) / sizeof(kMap[0]);
 

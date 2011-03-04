@@ -729,7 +729,7 @@ public class AudioService extends IAudioService.Stub {
             return;
         }
 
-        if (mode < AudioSystem.MODE_CURRENT || mode > AudioSystem.MODE_IN_CALL) {
+        if (mode < AudioSystem.MODE_CURRENT || mode >= AudioSystem.NUM_MODES) {
             return;
         }
 
@@ -2352,6 +2352,7 @@ public class AudioService extends IAudioService.Stub {
                 //      add modify the phone app to take advantage of the new API
                 synchronized(mRingingLock) {
                     if (mIsRinging || (getMode() == AudioSystem.MODE_IN_CALL) ||
+                            (getMode() == AudioSystem.MODE_IN_COMMUNICATION) ||
                             (getMode() == AudioSystem.MODE_RINGTONE) ) {
                         return;
                     }
