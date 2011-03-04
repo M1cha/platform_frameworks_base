@@ -70,6 +70,13 @@ public class NetworkUtils {
     public native static boolean stopDhcp(String interfaceName);
 
     /**
+     * Interrogates interface status
+     * @param interfaceName the name of the interface
+     * @return {@code true} if interface is up, {@code false} if interface is down
+     */
+    public native static boolean ifcEnabled(String interfaceName);
+
+    /**
      * Release the current DHCP lease.
      * @param interfaceName the name of the interface for which the lease should
      * be released
