@@ -32,7 +32,9 @@ int ifc_get_default_route(const char *ifname);
 int ifc_remove_default_route(const char *ifname);
 int ifc_reset_connections(const char *ifname);
 int ifc_configure(const char *ifname, in_addr_t ipaddr, in_addr_t netmask, in_addr_t gateway, in_addr_t dns1, in_addr_t dns2);
-
+int ifc_init();
+int ifc_close();
+int ifc_get_info(const char *name, unsigned *addr, unsigned *mask, unsigned *flags);
 int dhcp_do_request(const char *ifname,
                     in_addr_t *ipaddr,
                     in_addr_t *gateway,
@@ -179,6 +181,21 @@ static jboolean android_net_utils_stopDhcp(JNIEnv* env, jobject clazz, jstring i
     return (jboolean)(result == 0);
 }
 
+
+static jboolean android_net_utils_ifcEnabled(JNIEnv* env, jobject clazz, jstring ifname)
+{
+    unsigned flags;
+
+    if(::ifc_init())
+        return JNI_FALSE;
+    const char *nameStr = env->GetStringUTFChars(ifname, NULL);
+    if(::ifc_get_info(nameStr, NULL, NULL, &flags))
+        return JNI_FALSE;
+    env->ReleaseStringUTFChars(ifname, nameStr);
+    ::ifc_close();
+    return flags & 1 ? JNI_TRUE : JNI_FALSE;
+}
+
 static jboolean android_net_utils_releaseDhcpLease(JNIEnv* env, jobject clazz, jstring ifname)
 {
     int result;
@@ -230,6 +247,7 @@ static JNINativeMethod gNetworkUtilMethods[] = {
     { "resetConnections", "(Ljava/lang/String;)I",  (void *)android_net_utils_resetConnections },
     { "runDhcp", "(Ljava/lang/String;Landroid/net/DhcpInfo;)Z",  (void *)android_net_utils_runDhcp },
     { "stopDhcp", "(Ljava/lang/String;)Z",  (void *)android_net_utils_stopDhcp },
+    { "ifcEnabled", "(Ljava/lang/String;)Z",  (void *)android_net_utils_ifcEnabled },
     { "releaseDhcpLease", "(Ljava/lang/String;)Z",  (void *)android_net_utils_releaseDhcpLease },
     { "configureNative", "(Ljava/lang/String;IIIII)Z",  (void *)android_net_utils_configureInterface },
     { "getDhcpError", "()Ljava/lang/String;", (void*) android_net_utils_getDhcpError },
