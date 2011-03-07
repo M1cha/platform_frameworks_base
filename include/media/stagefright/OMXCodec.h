@@ -316,6 +316,7 @@ protected:
 
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4) && defined (NPA_BUFFERS)
     uint32_t mNumberOfNPABuffersSent;
+	uint32_t mThumbnailEOSSent;
 #endif
 };
 

@@ -2393,6 +2393,7 @@ status_t OMXCodec::setVideoOutputFormat(
             }
 
             mNumberOfNPABuffersSent = 0;
+            mThumbnailEOSSent = 0;
 #endif
 
         }
@@ -3371,6 +3372,7 @@ void OMXCodec::onPortSettingsChanged(OMX_U32 portIndex) {
 #if defined (NPA_BUFFERS)
     //reset NPA buffer counter on port reconfig.
     mNumberOfNPABuffersSent = 0;
+	mThumbnailEOSSent = 0;
 #endif
 
     if( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER"))
@@ -3689,9 +3691,17 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
 
     OMX_U32 flags = OMX_BUFFERFLAG_ENDOFFRAME;
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4) && defined (NPA_BUFFERS)
-    if(mQuirks & OMXCodec::kThumbnailMode)
-    {
-        CODEC_LOGV("Sending eos flag");
+    if(mQuirks & OMXCodec::kThumbnailMode) {
+        CODEC_LOGV("Sending eos flag %d",mThumbnailEOSSent);
+        if(mThumbnailEOSSent == 1) {
+            CODEC_LOGV("Previously EOS was sent out for thumbnail mode");
+            // Returning for this point since we dont want to send
+            // any more input buffers to the codec as it is expected to
+            // flush out the frame from codec since we have send EOS
+            // flag in input previous buffer.
+            return;
+        }
+        mThumbnailEOSSent = 1;
         flags |= OMX_BUFFERFLAG_EOS;
     }
 #endif
