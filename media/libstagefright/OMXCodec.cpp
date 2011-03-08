@@ -3097,10 +3097,9 @@ void OMXCodec::onCmdComplete(OMX_COMMANDTYPE cmd, OMX_U32 data) {
                     formatHasNotablyChanged(oldOutputFormat, mOutputFormat);
 
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
-                if( strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")  /* Any non-Ducati codec */
-                     || ( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")  &&
-                             ((mQuirks & OMXCodec::kThumbnailMode) ||
-                              (mQuirks & OMXCodec::kRequiresAllocateBufferOnOutputPorts)))) /* Any Ducati codec non-overlay usecase */
+                if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")){
+                    if((mQuirks & OMXCodec::kThumbnailMode) ||
+                       (mQuirks & OMXCodec::kRequiresAllocateBufferOnOutputPorts)) /* Any Ducati codec non-overlay usecase */
                     {
                         LOGD("OMX_CommandPortDisable Done. Reenabling port for non-overlay playback usecase");
 
@@ -3131,10 +3130,17 @@ void OMXCodec::onCmdComplete(OMX_COMMANDTYPE cmd, OMX_U32 data) {
 
                         err = allocateBuffersOnPort(portIndex);
                         CHECK_EQ(err, OK);
-                   }else
-                   {
+                    }else
+                    {
                       LOGD("OMX_CommandPortDisable Done. Not enabling port till overlay buffers are available");
-                   }
+                    }
+                } else
+                {
+                enablePortAsync(portIndex);
+
+                status_t err = allocateBuffersOnPort(portIndex);
+                CHECK_EQ(err, OK);
+                }
 #else
                 enablePortAsync(portIndex);
 
@@ -4307,9 +4313,11 @@ status_t OMXCodec::read(
 #if defined(OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
     /*Stagefright port-reconfiguration logic is based on mOutputPortSettingsHaveChanged, which will be updated very late when port is reenabled */
     /*Detect port-config event quickly so overlay buffers will be available upfront*/
-    if (mState == RECONFIGURING) {
-         mOutputPortSettingsHaveChanged = false;
-         return INFO_FORMAT_CHANGED;
+    if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")){
+        if (mState == RECONFIGURING) {
+            mOutputPortSettingsHaveChanged = false;
+            return INFO_FORMAT_CHANGED;
+        }
     }
 #endif
 
@@ -4379,34 +4387,41 @@ status_t OMXCodec::read(
     }
 
 #if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
-    while (mState != RECONFIGURING && mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
     //only for OMAP4 Video decoder we shall check the buffers which are not with component
     if (!strcmp("OMX.TI.DUCATI1.VIDEO.DECODER", mComponentName)) {
-        CODEC_LOGV("READ LOCKED BUFFER QUEUE EMPTY FLAG : %d",mFilledBuffers.empty());
-        if (mState == EXECUTING) {
+        while (mState != RECONFIGURING && mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
+            CODEC_LOGV("READ LOCKED BUFFER QUEUE EMPTY FLAG : %d",mFilledBuffers.empty());
+            if (mState == EXECUTING) {
                 fillOutputBuffers();
             }
-        }
 
 #if defined (NPA_BUFFERS)
-        if( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER") &&
-            (mQuirks & OMXCodec::kThumbnailMode)){
-           if(mNumberOfNPABuffersSent){
-               /*wait if atleast one filledbuffer is sent in NPA mode*/
-               mBufferFilled.wait(mLock);
-           }
-       }else{
-           mBufferFilled.wait(mLock);
-       }
+            if(mQuirks & OMXCodec::kThumbnailMode){
+                if(mNumberOfNPABuffersSent){
+                /*wait if atleast one filledbuffer is sent in NPA mode*/
+                    mBufferFilled.wait(mLock);
+                }
+            }else{
+                mBufferFilled.wait(mLock);
+            }
 #else
-       mBufferFilled.wait(mLock);
+           mBufferFilled.wait(mLock);
 #endif
+        }
+        /*see if we received a port reconfiguration */
+
+        if (mState == RECONFIGURING) {
+            mOutputPortSettingsHaveChanged = false;
+            return INFO_FORMAT_CHANGED;
+        }
+
     }
-    /*see if we received a port reconfiguration */
-    if (mState == RECONFIGURING) {
-        mOutputPortSettingsHaveChanged = false;
-        return INFO_FORMAT_CHANGED;
+    else {
+        while (mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
+            mBufferFilled.wait(mLock);
+        }
     }
+
 #else
     while (mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
         mBufferFilled.wait(mLock);
