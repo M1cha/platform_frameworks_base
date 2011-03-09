@@ -33,6 +33,7 @@ LOCAL_SHARED_LIBRARIES := \
     libstagefright \
     libbinder \
     libutils \
+    libdl \
     libjpeg
 
 LOCAL_C_INCLUDES := \
