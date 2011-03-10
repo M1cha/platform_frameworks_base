@@ -4494,6 +4494,11 @@ void OMXCodec::setBuffers(Vector< sp<IMemory> > mBufferAddresses, bool portRecon
 
 status_t OMXCodec::read(
         MediaBuffer **buffer, const ReadOptions *options) {
+
+#if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
+    status_t wait_status = 0;
+#endif
+
     *buffer = NULL;
 
     Mutex::Autolock autoLock(mLock);
@@ -4574,7 +4579,15 @@ status_t OMXCodec::read(
         }
 
         while (mSeekTimeUs >= 0) {
+#if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
+            wait_status = mBufferFilled.waitRelative(mLock, 1000000000);
+            if (wait_status) {
+                LOGE("Timed out waiting for the buffer! Line %d", __LINE__);
+                return UNKNOWN_ERROR;
+            }
+#else
             mBufferFilled.wait(mLock);
+#endif
         }
     }
 
@@ -4607,16 +4620,29 @@ status_t OMXCodec::read(
             }
 
 #if defined (NPA_BUFFERS)
-            if(mQuirks & OMXCodec::kThumbnailMode){
-                if(mNumberOfNPABuffersSent){
-                /*wait if atleast one filledbuffer is sent in NPA mode*/
-                    mBufferFilled.wait(mLock);
+            if (mQuirks & OMXCodec::kThumbnailMode) {
+               if(mNumberOfNPABuffersSent){
+                    /*wait if atleast one filledbuffer is sent in NPA mode*/
+                    wait_status = mBufferFilled.waitRelative(mLock, 1000000000);
+                    if (wait_status) {
+                        LOGE("Timed out waiting for the buffer! Line %d", __LINE__);
+                        return UNKNOWN_ERROR;
+                    }
+               }
+           }else{
+                //Dont wait forever.
+                wait_status = mBufferFilled.waitRelative(mLock, 1000000000);
+                if (wait_status) {
+                    LOGE("Timed out waiting for the buffer! Line %d", __LINE__);
+                    return UNKNOWN_ERROR;
                 }
-            }else{
-                mBufferFilled.wait(mLock);
-            }
+           }
 #else
-           mBufferFilled.wait(mLock);
+            wait_status = mBufferFilled.waitRelative(mLock, 1000000000);
+            if (wait_status) {
+                LOGE("Timed out waiting for the buffer! Line %d", __LINE__);
+                return UNKNOWN_ERROR;
+            }
 #endif
         }
         /*see if we received a port reconfiguration */
@@ -4624,11 +4650,14 @@ status_t OMXCodec::read(
             mOutputPortSettingsHaveChanged = false;
             return INFO_FORMAT_CHANGED;
         }
-
     }
     else {
         while (mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
-            mBufferFilled.wait(mLock);
+            wait_status = mBufferFilled.waitRelative(mLock, 1000000000);
+            if (wait_status) {
+                LOGE("Timed out waiting for the buffer! Line %d", __LINE__);
+                return UNKNOWN_ERROR;
+            }
         }
     }
 
