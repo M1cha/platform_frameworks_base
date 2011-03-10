@@ -321,6 +321,9 @@ status_t CameraSource::read(
     sp<IMemory> frame;
     int64_t frameTime;
 
+#if defined(OMAP_ENHANCEMENT) && (TARGET_OMAP4)
+    uint32_t frameOffset;
+#endif
     {
         Mutex::Autolock autoLock(mLock);
         while (mStarted) {
@@ -335,6 +338,10 @@ status_t CameraSource::read(
             frame = *mFramesReceived.begin();
             mFramesReceived.erase(mFramesReceived.begin());
 
+#if defined(OMAP_ENHANCEMENT) && (TARGET_OMAP4)
+            frameOffset = *mFrameOffset.begin();
+            mFrameOffset.erase(mFrameOffset.begin());
+#endif
             frameTime = *mFrameTimes.begin();
             mFrameTimes.erase(mFrameTimes.begin());
             int64_t skipTimeUs;
@@ -359,6 +366,9 @@ status_t CameraSource::read(
                 (*buffer)->add_ref();
                 (*buffer)->meta_data()->setInt64(kKeyTime, frameTime);
 
+#if defined(OMAP_ENHANCEMENT) && (TARGET_OMAP4)
+                (*buffer)->meta_data()->setInt32(kKeyOffset, frameOffset);
+#endif
                 return OK;
             }
         }
@@ -413,6 +423,11 @@ void CameraSource::dataCallbackTimestamp(int64_t timestampUs,
     mFrameTimes.push_back(timeUs);
     LOGV("initial delay: %lld, current time stamp: %lld",
         mStartTimeUs, timeUs);
+
+#if defined(OMAP_ENHANCEMENT) && (TARGET_OMAP4)
+    mFrameOffset.push_back(offset);
+#endif
+
     mFrameAvailableCondition.signal();
 }
 

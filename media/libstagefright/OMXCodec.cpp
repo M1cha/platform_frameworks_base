@@ -3564,6 +3564,10 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
 
     size_t offset = 0;
     int32_t n = 0;
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    uint32_t omx_offset = 0;
+#endif
+
     for (;;) {
         MediaBuffer *srcBuffer;
         MediaSource::ReadOptions options;
@@ -3650,6 +3654,11 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
             header->pBuffer = (OMX_U8 *) srcBuffer->data() + srcBuffer->range_offset();
 #if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
             //closed loop.
+            if(!strcmp(mComponentName,"OMX.TI.DUCATI1.VIDEO.H264E")
+               || !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E")) {
+                srcBuffer->meta_data()->findInt32(kKeyOffset,(int32_t *) &omx_offset);
+            }
+
             releaseBuffer = false;
             info->mMediaBuffer = srcBuffer;
 #endif
@@ -3733,9 +3742,24 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
                info->mBuffer, offset,
                timestampUs, timestampUs / 1E6);
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+    if(!strcmp(mComponentName,"OMX.TI.DUCATI1.VIDEO.H264E")
+       || !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E")) {
+        CODEC_LOGV("Calling emptybuffer with offset value =%ld ",omx_offset);
+
+        err = mOMX->emptyBuffer(
+            mNode, info->mBuffer, omx_offset, offset,
+            flags, timestampUs);
+    } else {
+        err = mOMX->emptyBuffer(
+            mNode, info->mBuffer, 0, offset,
+            flags, timestampUs);
+    }
+#else
     err = mOMX->emptyBuffer(
             mNode, info->mBuffer, 0, offset,
             flags, timestampUs);
+#endif
 
     if (err != OK) {
         setState(ERROR);
