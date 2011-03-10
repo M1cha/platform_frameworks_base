@@ -579,32 +579,59 @@ sp<IOMXRenderer> OMX::createRenderer(
         const char *componentName,
         OMX_COLOR_FORMATTYPE colorFormat,
         size_t encodedWidth, size_t encodedHeight,
-        size_t displayWidth, size_t displayHeight, int32_t rotation, int isS3D, int numOfOpBuffers) {
+        size_t displayWidth, size_t displayHeight,
+        int32_t rotationDegrees,
+        int isS3D, int numOfOpBuffers) {
     Mutex::Autolock autoLock(mLock);
     VideoRenderer *impl = NULL;
     void *libHandle = dlopen("libstagefrighthw.so", RTLD_NOW);
 
     if (libHandle) {
+        typedef VideoRenderer *(*CreateRendererWithRotationFunc)(
+                const sp<ISurface> &surface,
+                const char *componentName,
+                OMX_COLOR_FORMATTYPE colorFormat,
+                size_t displayWidth, size_t displayHeight,
+                size_t decodedWidth, size_t decodedHeight,
+                int32_t rotationDegrees,
+                int isS3D, int numOfOpBuffers);
+
         typedef VideoRenderer *(*CreateRendererFunc)(
                 const sp<ISurface> &surface,
                 const char *componentName,
                 OMX_COLOR_FORMATTYPE colorFormat,
                 size_t displayWidth, size_t displayHeight,
-                size_t decodedWidth, size_t decodedHeight, int isS3D, int numOfOpBuffers);
+                size_t decodedWidth, size_t decodedHeight,
+                int isS3D, int numOfOpBuffers);
 
-        CreateRendererFunc func =
-            (CreateRendererFunc)dlsym(
+        CreateRendererWithRotationFunc funcWithRotation =
+            (CreateRendererWithRotationFunc)dlsym(
                     libHandle,
-                    "_Z14createRendererRKN7android2spINS_8ISurfaceEEEPKc20"
-                    "OMX_COLOR_FORMATTYPEjjjjii");
-        if (func) {
-           impl = (*func)(surface, componentName, colorFormat,
-                    displayWidth, displayHeight, encodedWidth, encodedHeight, isS3D, numOfOpBuffers);
+                    "_Z26createRendererWithRotationRKN7android2spINS_8"
+                    "ISurfaceEEEPKc20OMX_COLOR_FORMATTYPEjjjjiii");
 
-            if (impl) {
-                impl = new SharedVideoRenderer(libHandle, impl);
-                libHandle = NULL;
+        if (funcWithRotation) {
+            impl = (*funcWithRotation)(
+                    surface, componentName, colorFormat,
+                    displayWidth, displayHeight, encodedWidth, encodedHeight,
+                    rotationDegrees,
+                    isS3D, numOfOpBuffers);
+        } else {
+            CreateRendererFunc func =
+                (CreateRendererFunc)dlsym(
+                        libHandle,
+                        "_Z14createRendererRKN7android2spINS_8ISurfaceEEEPKc20"
+                        "OMX_COLOR_FORMATTYPEjjjjii");
+            if (func) {
+                impl = (*func)(surface, componentName, colorFormat,
+                        displayWidth, displayHeight, encodedWidth, encodedHeight,
+                        isS3D, numOfOpBuffers);
             }
+        }
+
+        if (impl) {
+            impl = new SharedVideoRenderer(libHandle, impl);
+            libHandle = NULL;
         }
 
         if (libHandle) {
