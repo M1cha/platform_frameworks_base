@@ -299,6 +299,7 @@ public class MediaRecorder
                 setAudioSamplingRate(profile.audioSampleRate);
                 setAudioEncoder(profile.audioCodec);
             }
+            setParameter(String.format("param-use-64bit-offset=%d", 1));
         } else {
             setAudioEncodingBitRate(profile.audioBitRate);
             setAudioChannels(profile.audioChannels);
