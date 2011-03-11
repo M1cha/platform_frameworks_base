@@ -115,6 +115,8 @@ static int Calculate_TotalRefFrames(int nWidth, int nHeight) {
 #endif
 #define OUTPUT_BUFFER_COUNT 2
 #define INPUT_BUFFER_COUNT 2
+#elif defined(TARGET_OMAP3)
+#define OUTPUT_BUFFER_COUNT 4
 #endif
 
 #endif
@@ -246,7 +248,7 @@ static const CodecInfo kEncoderInfo[] = {
     { MEDIA_MIMETYPE_VIDEO_H263, "OMX.TI.DUCATI1.VIDEO.MPEG4E" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.DUCATI1.VIDEO.H264E" },
 };
-#else
+#elif defined(TARGET_OMAP3)
 static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_IMAGE_JPEG, "OMX.TI.JPEG.decode" },
     { MEDIA_MIMETYPE_AUDIO_MPEG, "OMX.TI.MP3.decode" },
@@ -2311,8 +2313,8 @@ status_t OMXCodec::setVideoOutputFormat(
         (((width + 15) & -16) * ((height + 15) & -16) * 3) / 2;  // YUV420
 #endif
 
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
-
+#if defined(OMAP_ENHANCEMENT)
+#if defined(TARGET_OMAP4)
     if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
 
         OMX_CONFIG_RECTTYPE tParamStruct;
@@ -2341,6 +2343,13 @@ status_t OMXCodec::setVideoOutputFormat(
             //def.nBufferCountActual => actual no. of buffers allocated on a port (communicated to codec)
             def.nBufferCountActual = def.nBufferCountMin + (2 * NUM_BUFFERS_TO_BE_QUEUED_FOR_OPTIMAL_PERFORMANCE);
     }
+#elif defined(TARGET_OMAP3)
+    // Suppress output buffer count for OMAP3
+    // The number of VRFB buffer, which is used for rotation, is 4.
+    // Output buffer count can not exceed VRFB buffer count.
+    if (def.nBufferCountActual > OUTPUT_BUFFER_COUNT)
+        def.nBufferCountActual = OUTPUT_BUFFER_COUNT;
+#endif
 #endif
     video_def->nFrameWidth = width;
     video_def->nFrameHeight = height;
