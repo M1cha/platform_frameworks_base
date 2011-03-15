@@ -2527,6 +2527,7 @@ OMXCodec::~OMXCodec() {
 
     free(mMIME);
     mMIME = NULL;
+
 }
 
 status_t OMXCodec::init() {
@@ -4298,6 +4299,7 @@ void OMXCodec::setBuffers(Vector< sp<IMemory> > mBufferAddresses, bool portRecon
     }
 #endif
 }
+
 #endif
 
 status_t OMXCodec::read(
@@ -4388,7 +4390,7 @@ status_t OMXCodec::read(
 
 #if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
     //only for OMAP4 Video decoder we shall check the buffers which are not with component
-    if (!strcmp("OMX.TI.DUCATI1.VIDEO.DECODER", mComponentName)) {
+    if (!strcmp("OMX.TI.DUCATI1.VIDEO.DECODER", mComponentName) && mPaused) {
         while (mState != RECONFIGURING && mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
             CODEC_LOGV("READ LOCKED BUFFER QUEUE EMPTY FLAG : %d",mFilledBuffers.empty());
             if (mState == EXECUTING) {
@@ -4425,6 +4427,13 @@ status_t OMXCodec::read(
 #else
     while (mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
         mBufferFilled.wait(mLock);
+    }
+#endif
+
+#ifdef OMAP_ENHANCEMENT
+    if (mPaused) {
+        // We are resuming from the pause state. resetting the pause flag
+        mPaused = false;
     }
 #endif
 

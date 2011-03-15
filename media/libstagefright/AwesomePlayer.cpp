@@ -1106,6 +1106,12 @@ status_t AwesomePlayer::pause_l(bool at_eos) {
         return OK;
     }
 
+#if defined (TARGET_OMAP4) && defined (OMAP_ENHANCEMENT)
+    if (mVideoSource != NULL) {
+        // Indicating to codec that Pause button pressed
+        mVideoSource->pause();
+    }
+#endif
     cancelPlayerEvents(true /* keepBufferingGoing */);
 
     if (mAudioPlayer != NULL) {
