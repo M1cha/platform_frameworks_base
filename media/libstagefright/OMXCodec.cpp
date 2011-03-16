@@ -3659,13 +3659,12 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
 
         CODEC_LOGV("calling emptyBuffer with codec specific data");
 
+        info->mOwnedByComponent = true;
         status_t err = mOMX->emptyBuffer(
                 mNode, info->mBuffer, 0, size,
                 OMX_BUFFERFLAG_ENDOFFRAME | OMX_BUFFERFLAG_CODECCONFIG,
                 0);
         CHECK_EQ(err, OK);
-
-        info->mOwnedByComponent = true;
 
         ++mCodecSpecificDataIndex;
         return;
@@ -3877,6 +3876,7 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
                info->mBuffer, offset,
                timestampUs, timestampUs / 1E6);
 
+    info->mOwnedByComponent = true;
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
     if(!strcmp(mComponentName,"OMX.TI.DUCATI1.VIDEO.H264E")
        || !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.MPEG4E")) {
@@ -3901,8 +3901,6 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
         return;
     }
 
-    info->mOwnedByComponent = true;
-
     // This component does not ever signal the EOS flag on output buffers,
     // Thanks for nothing.
     if (mSignalledEOS && !strcmp(mComponentName, "OMX.TI.Video.encoder")) {
@@ -3921,6 +3919,7 @@ void OMXCodec::fillOutputBuffer(BufferInfo *info) {
     }
 
     CODEC_LOGV("Calling fill_buffer on buffer %p", info->mBuffer);
+    info->mOwnedByComponent = true;
     status_t err = mOMX->fillBuffer(mNode, info->mBuffer);
 
     if (err != OK) {
@@ -3929,8 +3928,6 @@ void OMXCodec::fillOutputBuffer(BufferInfo *info) {
         setState(ERROR);
         return;
     }
-
-    info->mOwnedByComponent = true;
 }
 
 void OMXCodec::drainInputBuffer(IOMX::buffer_id buffer) {
