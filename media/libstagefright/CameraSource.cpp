@@ -190,10 +190,12 @@ CameraSource::CameraSource(const sp<Camera> &camera)
     if (mCamera != 0) {
         // Since we may not honor the preview size that app has requested
         // It is a good idea to get the actual preview size and use it for video recording.
-        paddedFrameWidth = atoi(params.get("padded-width"));
-        paddedFrameHeight = atoi(params.get("padded-height"));
+        paddedFrameWidth = params.getInt("padded-width");
+        paddedFrameHeight = params.getInt("padded-height");
         if (paddedFrameWidth < 0 || paddedFrameHeight < 0) {
-            LOGE("Failed to get camera(%p) preview size", mCamera.get());
+            LOGE("Failed to get camera(%p) preview size, reverting to default resolution", mCamera.get());
+            paddedFrameWidth = width;
+            paddedFrameHeight = height;
         }
         LOGV("CameraSource() : padded WxH=%dx%d", paddedFrameWidth, paddedFrameHeight);
     }
