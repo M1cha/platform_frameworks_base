@@ -1776,7 +1776,7 @@ void MPEG4Source::parseSEIMessages(S3D_params &mS3Dparams) {
         status_t res;
         size_t srcOffset = 0, size, num_bytes_read;
 
-        MediaBuffer *out;
+        MediaBuffer *out = NULL;
         uint8_t *myData;
 
         status_t err = this->start();
@@ -1926,7 +1926,9 @@ status_t MPEG4Source::read(
 
     CHECK(mStarted);
 
+#ifndef OMAP_ENHANCEMENT
     *out = NULL;
+#endif
 
     int64_t targetSampleTimeUs = -1;
 
@@ -2014,7 +2016,11 @@ status_t MPEG4Source::read(
     uint32_t dts;
     bool isSyncSample;
     bool newBuffer = false;
+#ifdef OMAP_ENHANCEMENT
+    if (mBuffer == NULL || (*out && !mWantsNALFragments)) {
+#else
     if (mBuffer == NULL) {
+#endif
         newBuffer = true;
 
         status_t err =
@@ -2025,7 +2031,15 @@ status_t MPEG4Source::read(
             return err;
         }
 
+#ifdef OMAP_ENHANCEMENT
+        if (NULL == *out || mWantsNALFragments) {
+            err = mGroup->acquire_buffer(&mBuffer);
+        } else {
+            mBuffer = *out;
+        }
+#else
         err = mGroup->acquire_buffer(&mBuffer);
+#endif
 
         if (err != OK) {
             CHECK(mBuffer == NULL);

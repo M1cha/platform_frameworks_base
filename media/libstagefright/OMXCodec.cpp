@@ -3578,6 +3578,13 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
     for (;;) {
         MediaBuffer *srcBuffer;
         MediaSource::ReadOptions options;
+#ifdef OMAP_ENHANCEMENT
+        MediaBuffer *tmpBuffer = NULL;
+        if (!mIsEncoder) {
+            srcBuffer = new MediaBuffer(info->mData, info->mSize);
+            tmpBuffer = srcBuffer;
+        }
+#endif
         if (mSkipTimeUs >= 0) {
             options.setSkipFrame(mSkipTimeUs);
         }
@@ -3674,9 +3681,19 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
                 releaseBuffer = false;
                 info->mMediaBuffer = srcBuffer;
             }
+#ifdef OMAP_ENHANCEMENT
+        if (tmpBuffer != srcBuffer) {
             memcpy((uint8_t *)info->mData + offset,
                     (const uint8_t *)srcBuffer->data() + srcBuffer->range_offset(),
                     srcBuffer->range_length());
+            if (tmpBuffer)
+                tmpBuffer->release();
+        }
+#else
+            memcpy((uint8_t *)info->mData + offset,
+                    (const uint8_t *)srcBuffer->data() + srcBuffer->range_offset(),
+                    srcBuffer->range_length());
+#endif
         }
 
         int64_t lastBufferTimeUs;
