@@ -1102,12 +1102,14 @@ status_t StagefrightRecorder::startMPEG4Recording() {
     status_t err = OK;
     sp<MediaWriter> writer = new MPEG4Writer(dup(mOutputFd));
 
+#if !defined(OMAP_ENHANCEMENT)
     // Add audio source first if it exists
     if (mAudioSource != AUDIO_SOURCE_LIST_END) {
         err = setupAudioEncoder(writer);
         if (err != OK) return err;
         totalBitRate += mAudioBitRate;
     }
+#endif
     if (mVideoSource == VIDEO_SOURCE_DEFAULT
             || mVideoSource == VIDEO_SOURCE_CAMERA) {
         sp<MediaSource> encoder;
@@ -1116,6 +1118,16 @@ status_t StagefrightRecorder::startMPEG4Recording() {
         writer->addSource(encoder);
         totalBitRate += mVideoBitRate;
     }
+#if defined(OMAP_ENHANCEMENT)
+    // Starting Audio after video to fix AV-Sync issue. The AV-Sync issue here refers to lip-sync not achieved in recorded video.
+    // This is due to the audio track thread blocking the video thread for approx half a second which results in audio recorded
+    // half a second earlier than video. This when played back results in audio/video out of sync.
+    if (mAudioSource != AUDIO_SOURCE_LIST_END) {
+        err = setupAudioEncoder(writer);
+        if (err != OK) return err;
+        totalBitRate += mAudioBitRate;
+    }
+#endif
 
     if (mInterleaveDurationUs > 0) {
         reinterpret_cast<MPEG4Writer *>(writer.get())->
