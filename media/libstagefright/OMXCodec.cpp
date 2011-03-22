@@ -3503,7 +3503,14 @@ void OMXCodec::drainInputBuffers() {
 
     Vector<BufferInfo> *buffers = &mPortBuffers[kPortIndexInput];
     for (size_t i = 0; i < buffers->size(); ++i) {
+#ifdef OMAP_ENHANCEMENT
+        if (!(*buffers)[i].mOwnedByComponent) {
+            drainInputBuffer(&buffers->editItemAt(i));
+        }
+#else
         drainInputBuffer(&buffers->editItemAt(i));
+
+#endif
     }
 }
 
@@ -4412,9 +4419,28 @@ status_t OMXCodec::read(
         }
     }
 
+#ifdef OMAP_ENHANCEMENT
+    bool wasPaused = false;
+    if (mPaused) {
+        wasPaused = mPaused;
+        // We are resuming from the pause state. resetting the pause flag
+        mPaused = false;
+            /*Initiate the buffer flow on input port once again
+             * This is required to avoid starvation on I/P port if the
+             * previous empty_buffer_done calls are returned without
+             * initiating empty_buffer due to mpause was asserted.
+             * This needs to be done before waiting for the output buffer fill
+             * to avoid the deadlock
+             */
+            if (mState == EXECUTING) {
+                drainInputBuffers();
+            }
+    }
+#endif
+
 #if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
     //only for OMAP4 Video decoder we shall check the buffers which are not with component
-    if (!strcmp("OMX.TI.DUCATI1.VIDEO.DECODER", mComponentName) && mPaused) {
+    if (!strcmp("OMX.TI.DUCATI1.VIDEO.DECODER", mComponentName) && wasPaused) {
         while (mState != RECONFIGURING && mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
             CODEC_LOGV("READ LOCKED BUFFER QUEUE EMPTY FLAG : %d",mFilledBuffers.empty());
             if (mState == EXECUTING) {
@@ -4435,7 +4461,6 @@ status_t OMXCodec::read(
 #endif
         }
         /*see if we received a port reconfiguration */
-
         if (mState == RECONFIGURING) {
             mOutputPortSettingsHaveChanged = false;
             return INFO_FORMAT_CHANGED;
@@ -4451,13 +4476,6 @@ status_t OMXCodec::read(
 #else
     while (mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
         mBufferFilled.wait(mLock);
-    }
-#endif
-
-#ifdef OMAP_ENHANCEMENT
-    if (mPaused) {
-        // We are resuming from the pause state. resetting the pause flag
-        mPaused = false;
     }
 #endif
 
