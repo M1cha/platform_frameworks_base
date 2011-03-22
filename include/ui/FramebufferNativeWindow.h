@@ -35,6 +35,9 @@
 #endif
 
 extern "C" EGLNativeWindowType android_createDisplaySurface(void);
+#ifdef OMAP_ENHANCEMENT
+extern "C" EGLNativeWindowType android_createDisplaySurfaceOnFB(uint32_t fb_idx);
+#endif
 
 // ---------------------------------------------------------------------------
 namespace android {
@@ -52,7 +55,11 @@ class FramebufferNativeWindow
         LightRefBase<FramebufferNativeWindow> >
 {
 public:
-    FramebufferNativeWindow(); 
+#ifdef OMAP_ENHANCEMENT
+    FramebufferNativeWindow(uint32_t idx);
+#endif
+    FramebufferNativeWindow();
+
 
     framebuffer_device_t const * getDevice() const { return fbDev; } 
 
@@ -91,7 +98,7 @@ private:
     int32_t mCurrentBufferIndex;
     bool mUpdateOnDemand;
 };
-    
+
 // ---------------------------------------------------------------------------
 }; // namespace android
 // ---------------------------------------------------------------------------

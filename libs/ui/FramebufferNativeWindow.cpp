@@ -63,7 +63,6 @@ private:
     ~NativeBuffer() { }; // this class cannot be overloaded
 };
 
-
 /*
  * This implements the (main) framebuffer management. This class is used
  * mostly by SurfaceFlinger, but also by command line GL application.
@@ -77,7 +76,7 @@ private:
  *
  */
 
-FramebufferNativeWindow::FramebufferNativeWindow() 
+FramebufferNativeWindow::FramebufferNativeWindow()
     : BASE(), fbDev(0), grDev(0), mUpdateOnDemand(false)
 {
     hw_module_t const* module;
@@ -170,6 +169,80 @@ FramebufferNativeWindow::FramebufferNativeWindow()
     LOGE("%d buffers flip-chain implementation enabled\n", mNumBuffers);
 #endif
 }
+
+#ifdef OMAP_ENHANCEMENT
+FramebufferNativeWindow::FramebufferNativeWindow(uint32_t idx)
+    : BASE(), fbDev(0), grDev(0), mUpdateOnDemand(false)
+{
+    hw_module_t const* module;
+
+    if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &module) == 0) {
+        int stride;
+        int err;
+        int i;
+        const size_t SIZE = 16;
+        char fbname[SIZE];
+        snprintf(fbname, SIZE, "fb%u", idx);
+
+        err = framebuffer_open_by_name(module, &fbDev, fbname);
+        LOGE_IF(err, "couldn't open framebuffer HAL (%s)", strerror(-err));
+
+        err = gralloc_open(module, &grDev);
+        LOGE_IF(err, "couldn't open gralloc HAL (%s)", strerror(-err));
+
+        // bail out if we can't initialize the modules
+        if (!fbDev || !grDev)
+            return;
+
+        mUpdateOnDemand = (fbDev->setUpdateRect != 0);
+
+        // initialize the buffer FIFO
+        mNumBuffers = NUM_FRAME_BUFFERS;
+        mNumFreeBuffers = NUM_FRAME_BUFFERS;
+        mBufferHead = mNumBuffers-1;
+
+        for(i = 0; i < NUM_FRAME_BUFFERS; i++){
+            buffers[i] = new NativeBuffer(
+                    fbDev->width, fbDev->height, fbDev->format, GRALLOC_USAGE_HW_FB << idx);
+        }
+
+        for(i = 0; i < NUM_FRAME_BUFFERS; i++){
+            err = grDev->alloc(grDev,
+                    fbDev->width, fbDev->height, fbDev->format,
+                    GRALLOC_USAGE_HW_FB << idx, &buffers[i]->handle, &buffers[i]->stride);
+
+            LOGE_IF(err, "fb buffer %d allocation failed w=%d, h=%d, err=%s",
+                    i, fbDev->width, fbDev->height, strerror(-err));
+
+            if(err){
+                mNumBuffers = i;
+                mNumFreeBuffers = i;
+                mBufferHead = mNumBuffers-1;
+                break;
+            }
+       }
+
+        const_cast<uint32_t&>(ANativeWindow::flags) = fbDev->flags;
+        const_cast<float&>(ANativeWindow::xdpi) = fbDev->xdpi;
+        const_cast<float&>(ANativeWindow::ydpi) = fbDev->ydpi;
+        const_cast<int&>(ANativeWindow::minSwapInterval) =
+            fbDev->minSwapInterval;
+        const_cast<int&>(ANativeWindow::maxSwapInterval) =
+            fbDev->maxSwapInterval;
+    } else {
+        LOGE("Couldn't get gralloc module");
+    }
+
+    ANativeWindow::setSwapInterval = setSwapInterval;
+    ANativeWindow::dequeueBuffer = dequeueBuffer;
+    ANativeWindow::lockBuffer = lockBuffer;
+    ANativeWindow::queueBuffer = queueBuffer;
+    ANativeWindow::query = query;
+    ANativeWindow::perform = perform;
+
+    LOGE("%d buffers flip-chain implementation enabled\n", mNumBuffers);
+}
+#endif
 
 FramebufferNativeWindow::~FramebufferNativeWindow() 
 {
@@ -338,6 +411,20 @@ int FramebufferNativeWindow::perform(ANativeWindow* window,
 // ----------------------------------------------------------------------------
 
 using namespace android;
+
+#ifdef OMAP_ENHANCEMENT
+EGLNativeWindowType android_createDisplaySurfaceOnFB(uint32_t fb_idx)
+{
+    FramebufferNativeWindow* w;
+    w = new FramebufferNativeWindow(fb_idx);
+    if (w->getDevice() == NULL) {
+        // get a ref so it can be destroyed when we exit this block
+        sp<FramebufferNativeWindow> ref(w);
+        return NULL;
+    }
+    return (EGLNativeWindowType)w;
+}
+#endif
 
 EGLNativeWindowType android_createDisplaySurface(void)
 {
