@@ -34,6 +34,10 @@
 #include <media/stagefright/Utils.h>
 #include <media/mediarecorder.h>
 
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP3)
+#include <cutils/properties.h>
+#endif
+
 #include "include/ESDS.h"
 
 namespace android {
@@ -554,6 +558,18 @@ void MPEG4Writer::writeCompositionMatrix(int degrees) {
     uint32_t b = 0;
     uint32_t c = 0;
     uint32_t d = 0x00010000;
+
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP3)
+    char value[PROPERTY_VALUE_MAX];
+    int newDegrees;
+    property_get("debug.video.force_rotation", value, "-1");
+    newDegrees = atoi(value);
+    if (newDegrees > 0) {
+        LOGI("Rotation changed from %d to %d", degrees, newDegrees);
+        degrees = newDegrees;
+    }
+#endif
+
     switch (degrees) {
         case 0:
             break;
