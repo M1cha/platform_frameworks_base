@@ -780,7 +780,23 @@ void CameraService::Client::stopPreview() {
     LOG1("stopPreview (pid %d)", getCallingPid());
     Mutex::Autolock lock(mLock);
     if (checkPidAndHardware() != NO_ERROR) return;
+#ifdef OMAP_ENHANCEMENT
 
+    //According to framework documentation, preview needs
+    //to be started for image capture. This will make sure
+    //that image capture related messages get disabled if
+    //not done already in their respective handlers.
+    //If these messages come when in the midddle of
+    //stopping preview. We will deadlock the system in
+    //lockIfMessageWanted()
+
+    disableMsgType(CAMERA_MSG_SHUTTER |
+                  CAMERA_MSG_POSTVIEW_FRAME |
+                  CAMERA_MSG_RAW_IMAGE |
+                  CAMERA_MSG_COMPRESSED_IMAGE |
+                  CAMERA_MSG_BURST_IMAGE);
+
+#endif
     disableMsgType(CAMERA_MSG_PREVIEW_FRAME);
     mHardware->stopPreview();
 
