@@ -145,6 +145,9 @@ private:
     struct BufferInfo {
         IOMX::buffer_id mBuffer;
         bool mOwnedByComponent;
+#ifdef OMAP_ENHANCEMENT
+        bool mOwnedByPlayer;
+#endif
         sp<IMemory> mMem;
         size_t mSize;
         void *mData;

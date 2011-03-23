@@ -2726,6 +2726,9 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
 
         info.mBuffer = buffer;
         info.mOwnedByComponent = false;
+#ifdef OMAP_ENHANCEMENT
+        info.mOwnedByPlayer = false;
+#endif
         info.mMem = mem;
         info.mMediaBuffer = NULL;
 
@@ -3480,6 +3483,11 @@ void OMXCodec::fillOutputBuffers() {
 
     Vector<BufferInfo> *buffers = &mPortBuffers[kPortIndexOutput];
     for (size_t i = 0; i < buffers->size(); ++i) {
+#ifdef OMAP_ENHANCEMENT
+        if ((*buffers)[i].mOwnedByPlayer) {
+            continue;
+        }
+#endif
 #if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
         if (!(*buffers)[i].mOwnedByComponent) {
 
@@ -4523,6 +4531,9 @@ status_t OMXCodec::read(
 
     BufferInfo *info = &mPortBuffers[kPortIndexOutput].editItemAt(index);
     info->mMediaBuffer->add_ref();
+#ifdef OMAP_ENHANCEMENT
+    info->mOwnedByPlayer = true;
+#endif
     *buffer = info->mMediaBuffer;
 
     return OK;
@@ -4537,6 +4548,9 @@ void OMXCodec::signalBufferReturned(MediaBuffer *buffer) {
 
         if (info->mMediaBuffer == buffer) {
             CHECK_EQ(mPortStatus[kPortIndexOutput], ENABLED);
+#ifdef OMAP_ENHANCEMENT
+            info->mOwnedByPlayer = false;
+#endif
 #if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
             if (!(*buffers)[i].mOwnedByComponent) {
                 fillOutputBuffer(info);

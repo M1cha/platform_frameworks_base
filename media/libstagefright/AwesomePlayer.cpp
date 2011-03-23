@@ -1429,18 +1429,6 @@ void AwesomePlayer::onVideoEvent() {
 
     if (mSeeking) {
 #ifdef OMAP_ENHANCEMENT
-        if (mBuffersWithRenderer.size()) {
-            unsigned int i;
-            unsigned int sz = mBuffersWithRenderer.size();
-
-            for(i = 0; i < sz; i++){
-                mBuffersWithRenderer[i]->release();
-            }
-
-            for(i = 0; i < sz; i++){
-                mBuffersWithRenderer.pop();
-            }
-        }
         if (mFirstVideoBuffer) {
             mFirstVideoBuffer->release();
             mFirstVideoBuffer = NULL;
