@@ -107,7 +107,7 @@ static int Calculate_TotalRefFrames(int nWidth, int nHeight) {
 #endif
 
 #ifdef TARGET_OMAP4
-//#define SUPPORT_B_FRAMES
+#define SUPPORT_B_FRAMES
 #ifdef SUPPORT_B_FRAMES
 #define OMX_NUM_B_FRAMES 2
 #else
