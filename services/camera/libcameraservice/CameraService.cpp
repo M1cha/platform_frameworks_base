@@ -1026,6 +1026,10 @@ void CameraService::Client::dataCallback(int32_t msgType,
     if (dataPtr == 0) {
         LOGE("Null data returned in data callback");
         client->handleGenericNotify(CAMERA_MSG_ERROR, UNKNOWN_ERROR, 0);
+#if (defined(TARGET_OMAP3) && defined(OMAP_ENHANCEMENT))
+        //Handle the NULL data returned in RawCallback from lower layers in OMAP3
+        client->handleGenericData(msgType, NULL);
+#endif
         return;
     }
 
