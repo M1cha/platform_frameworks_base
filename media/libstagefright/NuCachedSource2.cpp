@@ -444,6 +444,13 @@ ssize_t NuCachedSource2::readInternal(off_t offset, void *data, size_t size) {
     }
 
     size_t delta = offset - mCacheOffset;
+#ifdef OMAP_ENHANCEMENT
+    if (offset + size <= mCacheOffset + mCache->totalSize()) {
+        mCache->copy(delta, data, size);
+
+        return size;
+    }
+#endif
 
     if (mFinalStatus != OK) {
         if (delta >= mCache->totalSize()) {
@@ -456,11 +463,13 @@ ssize_t NuCachedSource2::readInternal(off_t offset, void *data, size_t size) {
         return avail;
     }
 
+#ifndef OMAP_ENHANCEMENT
     if (offset + size <= mCacheOffset + mCache->totalSize()) {
         mCache->copy(delta, data, size);
 
         return size;
     }
+#endif
 
     LOGV("deferring read");
 
