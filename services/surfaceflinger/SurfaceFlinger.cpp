@@ -387,7 +387,6 @@ bool SurfaceFlinger::threadLoop()
 
 #ifdef USE_COMPOSITION_BYPASS
         if (handleBypassLayer()) {
-            unlockClients();
             return true;
         }
 #endif
