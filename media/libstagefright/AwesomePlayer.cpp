@@ -1664,6 +1664,14 @@ void AwesomePlayer::onVideoEvent() {
         }
     }
 
+#ifdef OMAP_ENHANCEMENT
+    /*the buffer needs to be pushed to local database before calling render.
+    * This is required to release the buffer back to Video source if the
+    * buffer can't be queued to the DSS
+    */
+    mBuffersWithRenderer.push(mVideoBuffer);
+#endif
+
     if (mVideoRenderer != NULL) {
         mVideoRenderer->render(mVideoBuffer);
     }
@@ -1673,7 +1681,6 @@ void AwesomePlayer::onVideoEvent() {
         mBuffersWithRenderer[0]->release();
         mBuffersWithRenderer.pop();
     }
-    mBuffersWithRenderer.push(mVideoBuffer);
 #else
     if (mLastVideoBuffer) {
         mLastVideoBuffer->release();
