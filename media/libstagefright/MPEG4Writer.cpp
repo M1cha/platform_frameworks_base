@@ -2642,7 +2642,7 @@ void MPEG4Writer::Track::writeTrackHeader(
                 List<TSTableEntry>::iterator itnext = itcur;
                 itnext ++;
                 for (uint32_t i = 1; i < (mDecodeTimeStamp.size()); i++) {
-                    addOneSttsTableEntry(itnext->sampleCount, itnext->sampleTimestampUs - itcur->sampleTimestampUs);
+                    addOneSttsTableEntry(itnext->sampleCount, (itnext->sampleTimestampUs - itcur->sampleTimestampUs) / itnext->sampleCount);
                     itnext ++;
                     itcur ++;
                 }
