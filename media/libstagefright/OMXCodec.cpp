@@ -229,6 +229,10 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_AUDIO_AMR_NB, "AMRNBDecoder" },
     { MEDIA_MIMETYPE_AUDIO_AMR_WB, "AMRWBDecoder" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "AACDecoder" },
+    { MEDIA_MIMETYPE_VIDEO_WMV, "OMX.TI.DUCATI1.VIDEO.DECODER" },
+    { MEDIA_MIMETYPE_AUDIO_WMA, "OMX.ITTIAM.WMA.decode" },
+    { MEDIA_MIMETYPE_AUDIO_WMALSL, "OMX.ITTIAM.WMALSL.decode" },
+    { MEDIA_MIMETYPE_AUDIO_WMAPRO, "OMX.ITTIAM.WMAPRO.decode" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.TI.DUCATI1.VIDEO.DECODER" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "M4vH263Decoder" },
     { MEDIA_MIMETYPE_VIDEO_H263, "OMX.TI.DUCATI1.VIDEO.DECODER" },
@@ -269,6 +273,10 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.720P.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.Video.Decoder" },
     { MEDIA_MIMETYPE_AUDIO_VORBIS, "VorbisDecoder" },
+    { MEDIA_MIMETYPE_VIDEO_WMV, "OMX.TI.Video.Decoder" },
+    { MEDIA_MIMETYPE_VIDEO_WMV, "OMX.TI.720P.Decoder" },
+    { MEDIA_MIMETYPE_AUDIO_WMA, "OMX.TI.WMA.decode"},
+    { MEDIA_MIMETYPE_AUDIO_WMA, "OMX.ITTIAM.WMA.decode"},
 };
 
 static const CodecInfo kEncoderInfo[] = {
@@ -517,6 +525,22 @@ uint32_t OMXCodec::getComponentQuirks(
         quirks |= kSupportsMultipleFramesPerInputBuffer;
     }
 #ifdef OMAP_ENHANCEMENT
+    if (!strcmp(componentName, "OMX.TI.WMA.decode")) {
+        quirks |= kNeedsFlushBeforeDisable;
+        quirks |= kRequiresFlushCompleteEmulation;
+    }
+    if (!strcmp(componentName, "OMX.ITTIAM.WMA.decode")) {
+       quirks |= kNeedsFlushBeforeDisable;
+       quirks |= kRequiresFlushCompleteEmulation;
+    }
+    if (!strcmp(componentName, "OMX.ITTIAM.WMALSL.decode")) {
+        quirks |= kNeedsFlushBeforeDisable;
+        quirks |= kRequiresFlushCompleteEmulation;
+    }
+    if (!strcmp(componentName, "OMX.ITTIAM.WMAPRO.decode")) {
+        quirks |= kNeedsFlushBeforeDisable;
+        quirks |= kRequiresFlushCompleteEmulation;
+    }
     if (!strcmp(componentName, "OMX.ITTIAM.AAC.decode")) {
 
         quirks |= kNeedsFlushBeforeDisable;
@@ -591,7 +615,7 @@ uint32_t OMXCodec::getComponentQuirks(
 
     }
 #endif
-    else if (!strncmp(componentName, "OMX.TI.", 7)) {
+    else if (!strncmp(componentName, "OMX.TI.", 7) || !strncmp("OMX.ITTIAM.", componentName, 11)) {
 #else
     if (!strncmp(componentName, "OMX.TI.", 7)) {
 #endif
@@ -1011,6 +1035,54 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
             }
 #endif
         }
+#ifdef OMAP_ENHANCEMENT
+    else if (meta->findData(kKeyHdr, &type, &data, &size)) {
+        CODEC_LOGV("Codec specific information of size %d", size);
+        addCodecSpecificData(data, size);
+    }
+
+    if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_WMV, mMIME)) {
+        //Set the profile (RCV or VC1)
+        meta->findData(kKeyHdr, &type, &data, &size);
+        const uint8_t *ptr = (const uint8_t *)data;
+
+        OMX_U32 width = (((OMX_U32)ptr[18] << 24) | ((OMX_U32)ptr[17] << 16) | ((OMX_U32)ptr[16] << 8) | (OMX_U32)ptr[15]);
+        OMX_U32 height  = (((OMX_U32)ptr[22] << 24) | ((OMX_U32)ptr[21] << 16) | ((OMX_U32)ptr[20] << 8) | (OMX_U32)ptr[19]);
+
+        CODEC_LOGV("Height and width = %u %u\n", height, width);
+
+        //This logic is used by omap3 codec, is use less in omap4 at this time, but we may want to use it after, when the
+        // OpenMAX IL gets the update.
+        //MAX_RESOLUTION is use to take the desition between TI and Ittiam WMV codec
+        if((!strcmp(mComponentName, "OMX.TI.720P.Decoder")) &&
+            (!strcmp(mComponentName, "OMX.TI.Video.Decoder")) &&
+            (width*height > MAX_RESOLUTION)) {
+            OMX_U32 NewCompression = MAKEFOURCC_WMC((OMX_U8)ptr[27], (OMX_U8)ptr[28], (OMX_U8)ptr[29], (OMX_U8)ptr[30]);
+            OMX_U32 StreamType;
+            OMX_PARAM_WMVFILETYPE WMVFileType;
+            InitOMXParams(&WMVFileType);
+
+            if (NewCompression == FOURCC_WMV3) {
+                CODEC_LOGV("VIDDEC_WMV_RCVSTREAM\n");
+                StreamType = VIDDEC_WMV_RCVSTREAM;
+            }
+            else if(NewCompression == FOURCC_WVC1) {
+                CODEC_LOGV("VIDDEC_WMV_ELEMSTREAM\n");
+                StreamType = VIDDEC_WMV_ELEMSTREAM;
+            }
+            else {
+                CODEC_LOGV("ERROR...  PROFILE NOT KNOWN ASSUMED TO BE VIDDEC_WMV_RCVSTREAM\n");
+                StreamType = VIDDEC_WMV_RCVSTREAM;
+            }
+            WMVFileType.nWmvFileType = StreamType;
+
+            status_t err = mOMX->setParameter(mNode, (OMX_INDEXTYPE)VideoDecodeCustomParamWMVFileType, &WMVFileType, sizeof(WMVFileType));
+            if (err != OMX_ErrorNone) {
+                return err;
+            }
+        }
+    }
+#endif
 #if !(defined(OMAP_ENHANCEMENT) && defined (TARGET_OMAP4))
     }
 #endif
@@ -1515,6 +1587,12 @@ void OMXCodec::setVideoInputFormat(
         compressionFormat = OMX_VIDEO_CodingMPEG4;
     } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_H263, mime)) {
         compressionFormat = OMX_VIDEO_CodingH263;
+#ifdef OMAP_ENHANCEMENT
+    }
+    else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_WMV, mime))
+    {
+        compressionFormat = OMX_VIDEO_CodingWMV;
+#endif
     } else {
         LOGE("Not a supported video mime type: %s", mime);
         CHECK(!"Should not be here. Not a supported video mime type.");
@@ -2200,11 +2278,17 @@ status_t OMXCodec::setVideoOutputFormat(
         compressionFormat = OMX_VIDEO_CodingMPEG4;
     } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_H263, mime)) {
         compressionFormat = OMX_VIDEO_CodingH263;
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+#if defined(OMAP_ENHANCEMENT)
+#if defined(TARGET_OMAP4)
     } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_VP6, mime)) {
         compressionFormat = (OMX_VIDEO_CODINGTYPE)OMX_VIDEO_CodingVP6;
     } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_VP7, mime)) {
         compressionFormat = (OMX_VIDEO_CODINGTYPE)OMX_VIDEO_CodingVP7;
+#endif
+    }
+    else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_WMV , mime))
+    {
+        compressionFormat = OMX_VIDEO_CodingWMV;
 #endif
     } else {
         LOGE("Not a supported video mime type: %s", mime);
@@ -2469,11 +2553,21 @@ void OMXCodec::setComponentRole(
             "video_decoder.mpeg4", "video_encoder.mpeg4" },
         { MEDIA_MIMETYPE_VIDEO_H263,
             "video_decoder.h263", "video_encoder.h263" },
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+#if defined(OMAP_ENHANCEMENT)
+#if defined(TARGET_OMAP4)
         { MEDIA_MIMETYPE_VIDEO_VP6,
             "video_decoder.vp6", NULL },
         { MEDIA_MIMETYPE_VIDEO_VP7,
             "video_decoder.vp7", NULL },
+#endif
+        { MEDIA_MIMETYPE_VIDEO_WMV,
+            "video_decoder.wmv", "video_encoder.wmv" },
+        { MEDIA_MIMETYPE_AUDIO_WMA,
+            "audio_decoder.wma", "audio_encoder.wma" },
+        { MEDIA_MIMETYPE_AUDIO_WMAPRO,
+            "audio_decoder.wmapro", "audio_encoder.wmapro" },
+        { MEDIA_MIMETYPE_AUDIO_WMALSL,
+            "audio_decoder.wmalsl", "audio_encoder.wmalsl" },
 #endif
     };
 
@@ -5067,13 +5161,19 @@ void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
             } else if (video_def->eCompressionFormat == OMX_VIDEO_CodingAVC) {
                 mOutputFormat->setCString(
                         kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_AVC);
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+#if defined(OMAP_ENHANCEMENT)
+#if defined(TARGET_OMAP4)
             } else if (video_def->eCompressionFormat == (OMX_VIDEO_CODINGTYPE)OMX_VIDEO_CodingVP6) {
                 mOutputFormat->setCString(
                         kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_VP6);
             } else if (video_def->eCompressionFormat == (OMX_VIDEO_CODINGTYPE)OMX_VIDEO_CodingVP7) {
                 mOutputFormat->setCString(
                         kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_VP7);
+#endif
+            }
+            else if (video_def->eCompressionFormat == OMX_VIDEO_CodingWMV)
+            {
+                mOutputFormat->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
 #endif
             } else {
                 CHECK(!"Unknown compression format.");

@@ -30,6 +30,11 @@ extern const char *MEDIA_MIMETYPE_VIDEO_RAW;
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
 extern const char *MEDIA_MIMETYPE_VIDEO_VP6;
 extern const char *MEDIA_MIMETYPE_VIDEO_VP7;
+extern const char *MEDIA_MIMETYPE_CONTAINER_ASF;
+extern const char *MEDIA_MIMETYPE_VIDEO_WMV;
+extern const char *MEDIA_MIMETYPE_AUDIO_WMA;
+extern const char *MEDIA_MIMETYPE_AUDIO_WMAPRO;
+extern const char *MEDIA_MIMETYPE_AUDIO_WMALSL;
 #endif
 
 extern const char *MEDIA_MIMETYPE_AUDIO_AMR_NB;

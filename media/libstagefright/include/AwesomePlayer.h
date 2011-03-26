@@ -304,6 +304,9 @@ private:
 
     AwesomePlayer(const AwesomePlayer &);
     AwesomePlayer &operator=(const AwesomePlayer &);
+#ifdef OMAP_ENHANCEMENT
+    const char* mExtractorType;
+#endif
 };
 
 }  // namespace android

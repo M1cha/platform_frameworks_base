@@ -43,6 +43,7 @@ enum {
     kKeyAVCC              = 'avcc',  // raw data
 #ifdef OMAP_ENHANCEMENT
     kKeyStreamSpecificData= 'scsd',  // raw data
+    kKeyHdr               = 'hdrd',  // raw data
 #endif
     kKeyVorbisInfo        = 'vinf',  // raw data
     kKeyVorbisBooks       = 'vboo',  // raw data

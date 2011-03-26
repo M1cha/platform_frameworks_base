@@ -49,6 +49,10 @@
 
 #include <media/stagefright/foundation/ALooper.h>
 
+#ifdef OMAP_ENHANCEMENT
+#include "include/ASFExtractor.h"
+#endif
+
 namespace android {
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
 extern void updateMetaData(sp<MetaData> meta_track);
@@ -297,6 +301,7 @@ AwesomePlayer::AwesomePlayer()
       mIsFirstVideoBuffer(false),
       mFirstVideoBufferResult(OK),
       mFirstVideoBuffer(NULL),
+      mExtractorType(NULL),
 #else
       mLastVideoBuffer(NULL),
 #endif
@@ -338,6 +343,9 @@ AwesomePlayer::~AwesomePlayer() {
     reset();
 
     mClient.disconnect();
+#ifdef OMAP_ENHANCEMENT
+    closeASFLib();
+#endif
 }
 
 void AwesomePlayer::cancelPlayerEvents(bool keepBufferingGoing) {
@@ -411,6 +419,16 @@ status_t AwesomePlayer::setDataSource_l(
     if (extractor == NULL) {
         return UNKNOWN_ERROR;
     }
+#ifdef OMAP_ENHANCEMENT
+    sp<MetaData> fileMetadata = extractor->getMetaData();
+    bool isAvailable = fileMetadata->findCString(kKeyMIMEType, &mExtractorType);
+    if(isAvailable) {
+        LOGV("%s:: ExtractorType %s", __FUNCTION__,  mExtractorType);
+    }
+    else {
+        LOGV("%s:: ExtractorType not available", __FUNCTION__);
+    }
+#endif
 
     return setDataSource_l(extractor);
 }
@@ -449,7 +467,14 @@ status_t AwesomePlayer::setDataSource_l(const sp<MediaExtractor> &extractor) {
         if (!haveVideo && !strncasecmp(mime, "video/", 6)) {
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
            sp<MediaSource> mysource = extractor->getTrack(i);
-           mysource->parseSEIMessages(mS3Dparams);
+            if(!strcasecmp(mime, MEDIA_MIMETYPE_VIDEO_WMV)){
+                LOGV("ASF parser doesn't support parseSEIMessages()");
+            }
+            else {
+                LOGV("Call parseSEIMessages()");
+                mysource->parseSEIMessages(mS3Dparams);
+            }
+            LOGV("Call setVideoSource(mysource)");
            setVideoSource(mysource);
 #else
             setVideoSource(extractor->getTrack(i));
@@ -481,6 +506,14 @@ status_t AwesomePlayer::setDataSource_l(const sp<MediaExtractor> &extractor) {
     if (!haveAudio && !haveVideo) {
         return UNKNOWN_ERROR;
     }
+#ifdef OMAP_ENHANCEMENT
+    //WMV files with old versions of codecs like wmv2,wmv1..
+    LOGV(" setDataSource_l : haveAudio=%d, haveVideo=%d",haveAudio,haveVideo);
+    if ((extractor->countTracks())> 1 && !(haveAudio && haveVideo)) {
+        LOGE("Not supported stream");
+        return UNKNOWN_ERROR;
+    }
+#endif
 
     mExtractorFlags = extractor->flags();
 
@@ -1275,6 +1308,18 @@ status_t AwesomePlayer::initAudioDecoder() {
 
     if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW)) {
         mAudioSource = mAudioTrack;
+#if defined (OMAP_ENHANCEMENT) && defined (TARGET_OMAP4)
+    }
+    else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_WMA)) {
+        const char *componentName  = "OMX.ITTIAM.WMA.decode";
+        mAudioSource = OMXCodec::Create(
+        mClient.interface(), mAudioTrack->getFormat(),
+        false,
+        mAudioTrack, componentName);
+        if (mAudioSource == NULL) {
+            LOGE("Failed to create OMX component for WMA codec");
+        }
+#endif
     } else {
 #ifdef OMAP_ENHANCEMENT
         if (mVideoWidth*mVideoHeight > MAX_RESOLUTION) {
@@ -1290,10 +1335,46 @@ status_t AwesomePlayer::initAudioDecoder() {
                     false, // createEncoder
                     mAudioTrack);
 #else
+        bool isIttiamAudioCodecRequired = false;
+        bool is720PCodecRequired = (mVideoWidth*mVideoHeight > MAX_RESOLUTION) ? true : false;
+
+        if (true == is720PCodecRequired) {
+            isIttiamAudioCodecRequired = true;
+        }
+        if (true == isIttiamAudioCodecRequired){
+
+         // video is launched first, so these capablities are known
+         // audio can be selected accordingly
+         // TODO: extend this to a method that can include more
+         // capabilities to evaluate
+
+            const char *componentName;
+            if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AAC)) {
+                componentName = "OMX.ITTIAM.AAC.decode";
+
             mAudioSource = OMXCodec::Create(
                     mClient.interface(), mAudioTrack->getFormat(),
                     false, // createEncoder
-                    mAudioTrack, "OMX.ITTIAM.AAC.decode");
+                        mAudioTrack, componentName);
+            }
+            else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_WMA)) {
+                componentName = "OMX.ITTIAM.WMA.decode";
+
+                mAudioSource = OMXCodec::Create(
+                        mClient.interface(), mAudioTrack->getFormat(),
+                        false,
+                        mAudioTrack, componentName);
+
+            }
+            else {
+                componentName = "NoComponentAvailable";
+
+                mAudioSource = OMXCodec::Create(
+                        mClient.interface(), mAudioTrack->getFormat(),
+                        false,
+                        mAudioTrack);
+            }
+        }
 #endif
         } else {
             mAudioSource = OMXCodec::Create(
@@ -2026,6 +2107,16 @@ status_t AwesomePlayer::finishSetDataSource_l() {
     if (extractor == NULL) {
         return UNKNOWN_ERROR;
     }
+#ifdef OMAP_ENHANCEMENT
+    sp<MetaData> fileMetadata = extractor->getMetaData();
+    bool isAvailable = fileMetadata->findCString(kKeyMIMEType, &mExtractorType);
+    if(isAvailable) {
+        LOGV("%s:: ExtractorType %s", __FUNCTION__,  mExtractorType);
+    }
+    else {
+        LOGV("%s:: ExtractorType not available", __FUNCTION__);
+    }
+#endif
 
     return setDataSource_l(extractor);
 }

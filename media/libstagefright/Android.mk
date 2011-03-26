@@ -45,6 +45,12 @@ LOCAL_SRC_FILES:=                         \
         WAVExtractor.cpp                  \
         avc_utils.cpp                     \
         string.cpp
+
+ifeq ($(OMAP_ENHANCEMENT),true)
+LOCAL_SRC_FILES += \
+    ASFExtractor.cpp
+endif
+
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
 LOCAL_SRC_FILES +=               \
         TIVideoConfigParser.cpp  \
