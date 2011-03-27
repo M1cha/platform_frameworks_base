@@ -728,11 +728,18 @@ void AwesomePlayer::onBufferingUpdate() {
 
                 if ((mFlags & PLAYING) && !eos
                         && (cachedDataRemaining < kLowWaterMarkBytes)) {
+#ifdef OMAP_ENHANCEMENT
+                //if low cache duration is caused by a seek, wait audio callback to avoid MEDIA_SEEK_COMPLETE being lost.
+                if (!mWatchForAudioSeekComplete) {
+#endif
                     LOGI("cache is running low (< %d) , pausing.",
                          kLowWaterMarkBytes);
                     mFlags |= CACHE_UNDERRUN;
                     pause_l();
                     notifyListener_l(MEDIA_INFO, MEDIA_INFO_BUFFERING_START);
+#ifdef OMAP_ENHANCEMENT
+                }
+#endif
                 } else if (eos || cachedDataRemaining > kHighWaterMarkBytes) {
                     if (mFlags & CACHE_UNDERRUN) {
                         LOGI("cache has filled up (> %d), resuming.",
@@ -755,11 +762,18 @@ void AwesomePlayer::onBufferingUpdate() {
     if (getCachedDuration_l(&cachedDurationUs, &eos)) {
         if ((mFlags & PLAYING) && !eos
                 && (cachedDurationUs < kLowWaterMarkUs)) {
+#ifdef OMAP_ENHANCEMENT
+            //if low cache duration is caused by a seek, wait audio callback to avoid MEDIA_SEEK_COMPLETE being lost.
+            if (!mWatchForAudioSeekComplete) {
+#endif
             LOGI("cache is running low (%.2f secs) , pausing.",
                  cachedDurationUs / 1E6);
             mFlags |= CACHE_UNDERRUN;
             pause_l();
             notifyListener_l(MEDIA_INFO, MEDIA_INFO_BUFFERING_START);
+#ifdef OMAP_ENHANCEMENT
+            }
+#endif
         } else if (eos || cachedDurationUs > kHighWaterMarkUs) {
             if (mFlags & CACHE_UNDERRUN) {
                 LOGI("cache has filled up (%.2f secs), resuming.",
