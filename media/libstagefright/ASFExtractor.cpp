@@ -127,7 +127,8 @@ sp<MetaData> ASFExtractor::getMetaData() {
 bool SniffASF(const sp<DataSource> &source,
               String8 *mimeType,
               float *confidence,
-              sp<AMessage> *meta) {
+              sp<AMessage> *meta)
+{
     const char *errstr;
 
     static bool (*pSniffASF)(
@@ -145,22 +146,17 @@ bool SniffASF(const sp<DataSource> &source,
             return false;
         }
     }
- 
-    //BAW
-    LOGE("BAW: pSniffASF = %p",pSniffASF);
-//    if(!pSniffASF) {
-        LOGE("BAW: dlsym SniffASF");
-        pSniffASF =(bool (*)(const android::sp<android::DataSource>&, android::String8*, float*, android::sp<android::AMessage>*)) dlsym(pASFHandle, "SniffASF");
-        if((errstr = dlerror()) != NULL) {
-            LOGE("Error dlsym(pSniffASF), err: %s", errstr);
-            return false;
-        }
-//    }
 
+    pSniffASF =(bool (*)(const android::sp<android::DataSource>&, android::String8*, float*, android::sp<android::AMessage>*)) dlsym(pASFHandle, "SniffASF");
+    if((errstr = dlerror()) != NULL) {
+        LOGE("Error dlsym(pSniffASF), err: %s", errstr);
+        return false;
+    }
     return (*pSniffASF)(source, mimeType, confidence, meta);
 }
 
-bool isASFParserAvailable() {
+bool isASFParserAvailable()
+{
     FILE *pF;
 
     pF = fopen("/system/lib/libittiam_asfextractor.so", "r");
@@ -173,9 +169,9 @@ bool isASFParserAvailable() {
     return true;
 }
 
-void closeASFLib() {
-     if (pASFHandle) {
-        LOGE("BAW: Calling dlclose(pASFHandle)");
+void closeASFLib()
+{
+    if (pASFHandle) {
         dlclose(pASFHandle);
         pASFHandle = NULL;
      }
