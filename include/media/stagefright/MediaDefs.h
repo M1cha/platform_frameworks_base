@@ -27,9 +27,11 @@ extern const char *MEDIA_MIMETYPE_VIDEO_AVC;
 extern const char *MEDIA_MIMETYPE_VIDEO_MPEG4;
 extern const char *MEDIA_MIMETYPE_VIDEO_H263;
 extern const char *MEDIA_MIMETYPE_VIDEO_RAW;
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+#if defined(OMAP_ENHANCEMENT)
+#if defined(TARGET_OMAP4)
 extern const char *MEDIA_MIMETYPE_VIDEO_VP6;
 extern const char *MEDIA_MIMETYPE_VIDEO_VP7;
+#endif
 extern const char *MEDIA_MIMETYPE_CONTAINER_ASF;
 extern const char *MEDIA_MIMETYPE_VIDEO_WMV;
 extern const char *MEDIA_MIMETYPE_AUDIO_WMA;
