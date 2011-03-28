@@ -506,14 +506,6 @@ status_t AwesomePlayer::setDataSource_l(const sp<MediaExtractor> &extractor) {
     if (!haveAudio && !haveVideo) {
         return UNKNOWN_ERROR;
     }
-#ifdef OMAP_ENHANCEMENT
-    //WMV files with old versions of codecs like wmv2,wmv1..
-    LOGV(" setDataSource_l : haveAudio=%d, haveVideo=%d",haveAudio,haveVideo);
-    if ((extractor->countTracks())> 1 && !(haveAudio && haveVideo)) {
-        LOGE("Not supported stream");
-        return UNKNOWN_ERROR;
-    }
-#endif
 
     mExtractorFlags = extractor->flags();
 
