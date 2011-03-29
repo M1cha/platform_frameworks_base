@@ -219,9 +219,8 @@ private:
     bool mIsFirstVideoBuffer;
     status_t mFirstVideoBufferResult;
     MediaBuffer *mFirstVideoBuffer;
-#else
-    MediaBuffer *mLastVideoBuffer;
 #endif
+    MediaBuffer *mLastVideoBuffer;
     MediaBuffer *mVideoBuffer;
 
     sp<NuHTTPDataSource> mConnectingDataSource;
