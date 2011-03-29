@@ -4452,6 +4452,15 @@ void OMXCodec::setBuffers(Vector< sp<IMemory> > mBufferAddresses, bool portRecon
         /*output port is not enabled for ducati codecs, delayed till we get buffers here */
         enablePortAsync(kPortIndexOutput);
         allocateBuffersOnPort(kPortIndexOutput);
+
+        //Make sure output port is reached to ENABLED state and thus mstate to EXECUTING
+        retrycount = 0;
+        while(mPortStatus[kPortIndexOutput] == ENABLING){
+            usleep(2000); // 2 mS
+            LOGD("(%d) Output port is ENABLING.. Waiting for port to be enabled.. %d",retrycount,mPortStatus[kPortIndexOutput] );
+            retrycount++;
+            CHECK(retrycount < 100);
+        }
     }
 #endif
 }
@@ -4565,10 +4574,10 @@ status_t OMXCodec::read(
 
 #if defined(TARGET_OMAP4) && defined(OMAP_ENHANCEMENT)
     //only for OMAP4 Video decoder we shall check the buffers which are not with component
-    if (!strcmp("OMX.TI.DUCATI1.VIDEO.DECODER", mComponentName) && wasPaused) {
+    if (!strcmp("OMX.TI.DUCATI1.VIDEO.DECODER", mComponentName)) {
         while (mState != RECONFIGURING && mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
             CODEC_LOGV("READ LOCKED BUFFER QUEUE EMPTY FLAG : %d",mFilledBuffers.empty());
-            if (mState == EXECUTING) {
+            if (mState == EXECUTING && wasPaused) {
                 fillOutputBuffers();
             }
 
