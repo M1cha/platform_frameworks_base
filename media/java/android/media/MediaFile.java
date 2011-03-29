@@ -168,6 +168,9 @@ public class MediaFile {
         }
         if("true".equals(System.getProperty("omap.enhancement"))) {
             addFileType("AVI", FILE_TYPE_AVI, "video/avi");
+            addFileType("WMA", FILE_TYPE_WMA, "audio/x-ms-wma");
+            addFileType("WMV", FILE_TYPE_WMV, "video/asf");
+            addFileType("ASF", FILE_TYPE_ASF, "video/asf");
         }
         addFileType("JPG", FILE_TYPE_JPEG, "image/jpeg");
         addFileType("JPEG", FILE_TYPE_JPEG, "image/jpeg");
