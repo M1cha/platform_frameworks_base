@@ -536,11 +536,17 @@ status_t MPEG4Extractor::parseChunk(off_t *offset, int depth) {
             // The smallest valid chunk is 16 bytes long in this case.
             return ERROR_MALFORMED;
         }
-    } else if (chunk_size < 8) {
+#ifdef OMAP_ENHANCEMENT
+    } else if ((chunk_size < 8) && (chunk_size != 0)){
         // The smallest valid chunk is 8 bytes long.
         return ERROR_MALFORMED;
     }
-
+#else
+    } else if (chunk_size < 8){
+        // The smallest valid chunk is 8 bytes long.
+        return ERROR_MALFORMED;
+    }
+#endif
     char chunk[5];
     MakeFourCCString(chunk_type, chunk);
 
