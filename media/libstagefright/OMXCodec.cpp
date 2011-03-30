@@ -241,7 +241,8 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_VIDEO_AVC, "AVCDecoder" },
     { MEDIA_MIMETYPE_AUDIO_VORBIS, "VorbisDecoder" },
     { MEDIA_MIMETYPE_VIDEO_VP6, "OMX.TI.DUCATI1.VIDEO.DECODER" },
-    { MEDIA_MIMETYPE_VIDEO_VP7, "OMX.TI.DUCATI1.VIDEO.DECODER" }
+    { MEDIA_MIMETYPE_VIDEO_VP7, "OMX.TI.DUCATI1.VIDEO.DECODER" },
+    { MEDIA_MIMETYPE_VIDEO_VPX, "VPXDecoder" },
 };
 
 //Maintain only s/w encoders till ducati encoders are integrated to SF
@@ -277,6 +278,7 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_VIDEO_WMV, "OMX.TI.720P.Decoder" },
     { MEDIA_MIMETYPE_AUDIO_WMA, "OMX.TI.WMA.decode"},
     { MEDIA_MIMETYPE_AUDIO_WMA, "OMX.ITTIAM.WMA.decode"},
+    { MEDIA_MIMETYPE_VIDEO_VPX, "VPXDecoder" },
 };
 
 static const CodecInfo kEncoderInfo[] = {
