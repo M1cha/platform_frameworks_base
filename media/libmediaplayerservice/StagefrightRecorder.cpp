@@ -714,9 +714,24 @@ sp<MediaSource> StagefrightRecorder::createAudioSource() {
     OMXClient client;
     CHECK_EQ(client.connect(), OK);
 
-    sp<MediaSource> audioEncoder =
+    sp<MediaSource> audioEncoder;
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP3)
+#define MAX_RESOLUTION 414720
+    if ((mAudioEncoder == AUDIO_ENCODER_AAC) &&
+        (mVideoWidth*mVideoHeight > MAX_RESOLUTION)) {
+        audioEncoder =
+            OMXCodec::Create(client.interface(), encMeta,
+                             true /* createEncoder */, audioSource,
+                             "OMX.ITTIAM.AAC.encode");
+
+    } else {
+#endif
+    audioEncoder =
         OMXCodec::Create(client.interface(), encMeta,
                          true /* createEncoder */, audioSource);
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP3)
+    }
+#endif
     mAudioSourceNode = audioSource;
 
     return audioEncoder;
