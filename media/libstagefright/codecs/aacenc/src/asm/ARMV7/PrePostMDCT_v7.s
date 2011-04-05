@@ -129,6 +129,9 @@ PostMDCT_LOOP:
 	bne       	PostMDCT_LOOP
 
 PostMDCT_END:
+.ifdef NEEDS_ARM_ERRATA_754319_754320_ASM
+        VMOV                     s0,s0                                                                                @NOP for ARM Errata
+.endif
 	ldmia     sp!, {r4 - r11, pc}
 
 	@ENDP  		@ |PostMDCT|

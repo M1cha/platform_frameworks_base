@@ -140,7 +140,11 @@ Radix4First_LOOP:
 	bne       		Radix4First_LOOP
 	
 Radix4First_END:
+.ifdef NEEDS_ARM_ERRATA_754319_754320_ASM
+        VMOV                    s0,s0                                                                  @NOP for ARM Errata
+.endif
 	ldmia    		sp!, {r4 - r11, pc}
+
 
 	@ENDP  @ |Radix4First|
 	.end

@@ -90,11 +90,15 @@ LOOP:
           BLT           LOOP
                     
 pred_lt4_end:
-		     
-          LDMFD   	r13!, {r4 - r12, r15} 
- 
+
+.ifdef NEEDS_ARM_ERRATA_754319_754320_ASM
+          VMOV          s0,s0                                     @NOP for ARM Errata
+.endif
+          LDMFD   	r13!, {r4 - r12, r15}
+
 Lable1:
           .word   	inter4_2
+
           @ENDFUNC
           .END
 
