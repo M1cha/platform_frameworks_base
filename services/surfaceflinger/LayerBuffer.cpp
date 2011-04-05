@@ -698,6 +698,10 @@ LayerBuffer::OverlaySource::OverlaySource(LayerBuffer& layer,
     mInitialized = false;
 
     mOverlayHandle = overlay->getHandleRef(overlay);
+
+#ifdef OMAP_ENHANCEMENT
+    layer.dpy = 0; //initialize the Layer display ID to 0
+#endif
     
     sp<OverlayChannel> channel = new OverlayChannel( &layer );
 
@@ -753,6 +757,8 @@ LayerBuffer::OverlaySource::OverlaySource(LayerBuffer& layer,
     mInitialized = false;
 
     mOverlayHandle = overlay->getHandleRef(overlay);
+
+    layer.dpy = 0; //initialize the Layer display ID to 0
 
     sp<OverlayChannel> channel = new OverlayChannel( &layer );
 
