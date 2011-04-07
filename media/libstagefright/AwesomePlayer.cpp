@@ -1025,7 +1025,19 @@ status_t AwesomePlayer::initRenderer_l() {
         CHECK(meta->findInt32(kKeyWidth, &decodedWidth));
         CHECK(meta->findInt32(kKeyHeight, &decodedHeight));
 #ifdef OMAP_ENHANCEMENT
+#ifdef TARGET_OMAP4
+        CHECK(meta->findInt32(kKeyWidth, &mVideoWidth));
+        CHECK(meta->findInt32(kKeyHeight, &mVideoHeight));
+
+        if(!(meta->findInt32(kKeyPaddedWidth, &decodedWidth))) {
+           CHECK(meta->findInt32(kKeyWidth, &decodedWidth));
+        }
+        if(!(meta->findInt32(kKeyPaddedHeight, &decodedHeight))) {
+           CHECK(meta->findInt32(kKeyHeight, &decodedHeight));
+        }
+#endif
         LOGD(" initRenderer_l %dx%d",decodedWidth,decodedHeight );
+        LOGD(" initRenderer_l %dx%d",mVideoWidth,mVideoHeight );
         if (mVideoRenderer != NULL) {
             //we cant destroy overlay based renderer here,as the overlay has 2 handles
             //(1) from media server process (the current process)

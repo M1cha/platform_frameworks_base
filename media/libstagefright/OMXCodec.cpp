@@ -3246,7 +3246,7 @@ void OMXCodec::onCmdComplete(OMX_COMMANDTYPE cmd, OMX_U32 data) {
                         OMX_VIDEO_PORTDEFINITIONTYPE *video_def = &def.format.video;
 
                         int32_t padded_width;
-                        CHECK(mOutputFormat->findInt32(kKeyWidth, &padded_width));
+                        CHECK(mOutputFormat->findInt32(kKeyPaddedWidth, &padded_width));
                         video_def->nStride = padded_width;
 
                         LOGE("Updating video_def->nStride with new width %d", (int) video_def->nStride);
@@ -5224,6 +5224,12 @@ void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
 
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
 
+        /* for Non-Ducati HW codecs, padded with and height are updated with the
+        * video frame width and Height
+        */
+        mOutputFormat->setInt32(kKeyPaddedWidth, video_def->nFrameWidth);
+        mOutputFormat->setInt32(kKeyPaddedHeight, video_def->nFrameHeight);
+
         /* Ducati codecs require padded output buffers.
            Query proper size and update meta-data accordingly
            which will be used later in renderer.
@@ -5239,8 +5245,8 @@ void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
                     mNode, (OMX_INDEXTYPE)OMX_TI_IndexParam2DBufferAllocDimension, &tParamStruct, sizeof(tParamStruct));
 
             CHECK_EQ(err, OK);
-            mOutputFormat->setInt32(kKeyWidth, tParamStruct.nWidth);
-            mOutputFormat->setInt32(kKeyHeight, tParamStruct.nHeight);
+            mOutputFormat->setInt32(kKeyPaddedWidth, tParamStruct.nWidth);
+            mOutputFormat->setInt32(kKeyPaddedHeight, tParamStruct.nHeight);
             LOGD("initOutputFormat WxH %dx%d Padded %dx%d ",
                         (int) video_def->nFrameWidth, (int) video_def->nFrameHeight,
                         (int) tParamStruct.nWidth, (int) tParamStruct.nHeight);

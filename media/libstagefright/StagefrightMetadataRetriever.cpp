@@ -253,16 +253,21 @@ static VideoFrame *extractVideoFrameWithCodecFlags(
     int32_t srcFormat;
     CHECK(meta->findInt32(kKeyColorFormat, &srcFormat));
 
-    sp<MetaData> source_meta = source->getFormat();
     int32_t format;
     const char *component;
 
-    //OMAP4 ducati codecs => displaywidth,displayheight are lost due to padded fields by codec.
-    //Get display WxH from Video track source MetaData.
-    //In case of port reconfig event, we will have new updated frame WxH
+    //cache the display width and height
     int32_t displayWidth, displayHeight;
-    CHECK(source_meta->findInt32(kKeyWidth, &displayWidth));
-    CHECK(source_meta->findInt32(kKeyHeight, &displayHeight));
+    displayWidth = width;
+    displayHeight = height;
+
+    //update width & height with the buffer width&height
+    if(!(meta->findInt32(kKeyPaddedWidth, &width))) {
+        CHECK(meta->findInt32(kKeyWidth, &width));
+    }
+    if(!(meta->findInt32(kKeyPaddedHeight, &height))) {
+        CHECK(meta->findInt32(kKeyHeight, &height));
+    }
     LOGD("VideoFrame WxH %dx%d", displayWidth, displayHeight);
 
     if(((OMX_COLOR_FORMATTYPE)srcFormat == OMX_COLOR_FormatYUV420PackedSemiPlanar) ||
