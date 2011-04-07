@@ -302,6 +302,7 @@ AwesomePlayer::AwesomePlayer()
       mFirstVideoBufferResult(OK),
       mFirstVideoBuffer(NULL),
       mExtractorType(NULL),
+      mExtractor(NULL),
 #else
       mLastVideoBuffer(NULL),
 #endif
@@ -344,7 +345,7 @@ AwesomePlayer::~AwesomePlayer() {
 
     mClient.disconnect();
 #ifdef OMAP_ENHANCEMENT
-    closeASFLib();
+    mExtractor.clear();
 #endif
 }
 
@@ -428,6 +429,7 @@ status_t AwesomePlayer::setDataSource_l(
     else {
         LOGV("%s:: ExtractorType not available", __FUNCTION__);
     }
+    mExtractor = extractor;
 #endif
 
     return setDataSource_l(extractor);
@@ -2124,6 +2126,7 @@ status_t AwesomePlayer::finishSetDataSource_l() {
     else {
         LOGV("%s:: ExtractorType not available", __FUNCTION__);
     }
+    mExtractor = extractor;
 #endif
 
     return setDataSource_l(extractor);

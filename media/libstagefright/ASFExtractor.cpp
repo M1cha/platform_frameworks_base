@@ -83,7 +83,9 @@ ASFExtractor::~ASFExtractor() {
 
     (pASFParser->destructorASFExtractor)(mHandle);
 
-	// Commented to handle the MediaSource::getFormat() issue.
+    //DL lib is unloaded only when ref count drops to 0
+    dlclose(pASFHandle);
+
     delete pASFParser;
     pASFParser = NULL;
 }
@@ -137,14 +139,10 @@ bool SniffASF(const sp<DataSource> &source,
         float *confidence,
         sp<AMessage> *meta);
 
-    LOGV("Dummy SniffASF function");
-
-    if(!pASFHandle) {
-        pASFHandle = dlopen("/system/lib/libittiam_asfextractor.so", RTLD_LAZY | RTLD_GLOBAL);
-        if((errstr = dlerror()) != NULL){
-            LOGE("dlopen() err: %s", errstr);
-            return false;
-        }
+    pASFHandle = dlopen("/system/lib/libittiam_asfextractor.so", RTLD_LAZY | RTLD_GLOBAL);
+    if((errstr = dlerror()) != NULL){
+        LOGE("dlopen() err: %s", errstr);
+         return false;
     }
 
     pSniffASF =(bool (*)(const android::sp<android::DataSource>&, android::String8*, float*, android::sp<android::AMessage>*)) dlsym(pASFHandle, "SniffASF");
@@ -152,7 +150,14 @@ bool SniffASF(const sp<DataSource> &source,
         LOGE("Error dlsym(pSniffASF), err: %s", errstr);
         return false;
     }
-    return (*pSniffASF)(source, mimeType, confidence, meta);
+
+    bool asf = (*pSniffASF)(source, mimeType, confidence, meta);
+    if (!asf) {
+        //DL lib is unloaded only when ref count drops to 0
+        dlclose(pASFHandle);
+    }
+    return asf;
+
 }
 
 bool isASFParserAvailable()
@@ -169,11 +174,4 @@ bool isASFParserAvailable()
     return true;
 }
 
-void closeASFLib()
-{
-    if (pASFHandle) {
-        dlclose(pASFHandle);
-        pASFHandle = NULL;
-     }
-}
 }  // namespace android
