@@ -2964,7 +2964,8 @@ void OMXCodec::on_message(const omx_message &msg) {
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4) && defined (NPA_BUFFERS)
         if( !strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER") &&
             (mQuirks & OMXCodec::kThumbnailMode) ){
-            mNumberOfNPABuffersSent--;
+            if (mNumberOfNPABuffersSent > 0)
+                mNumberOfNPABuffersSent--;
         }
 #endif
             info->mOwnedByComponent = false;
