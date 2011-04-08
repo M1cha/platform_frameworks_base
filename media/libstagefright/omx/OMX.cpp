@@ -474,8 +474,8 @@ struct SharedVideoRenderer : public VideoRenderer {
     mObj->set_s3d_frame_layout(s3d_mode, s3d_fmt, s3d_order, s3d_subsampling);
      }
 
-    virtual void resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) {
-          mObj->resizeRenderer(width, height, buffercount);
+    virtual void resizeRenderer(void* resize_params) {
+          mObj->resizeRenderer(resize_params);
     }
 virtual void requestRendererClone(bool enable) {
     mObj->requestRendererClone(enable);
@@ -684,8 +684,8 @@ void OMXRenderer::set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint
     mImpl->set_s3d_frame_layout(s3d_mode, s3d_fmt, s3d_order, s3d_subsampling);
 }
 
-void OMXRenderer::resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) {
-    mImpl->resizeRenderer(width, height, buffercount);
+void OMXRenderer::resizeRenderer(void* resize_params) {
+    mImpl->resizeRenderer(resize_params);
 }
 
 void OMXRenderer::requestRendererClone(bool enable) {

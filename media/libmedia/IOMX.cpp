@@ -883,7 +883,7 @@ public:
     virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) {return false;}
 
     virtual void set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint32_t s3d_order, uint32_t s3d_subsampling) {}
-    virtual void resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) {}
+    virtual void resizeRenderer(void* resize_params) {}
     virtual void requestRendererClone(bool enable) {}
 #endif
 

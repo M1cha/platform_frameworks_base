@@ -118,8 +118,8 @@ struct AwesomeRemoteRenderer : public AwesomeRenderer {
          mTarget->set_s3d_frame_layout(s3d_mode, s3d_fmt, s3d_order, s3d_subsampling);
     }
 
-    virtual void resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) {
-        mTarget->resizeRenderer(width, height, buffercount);
+    virtual void resizeRenderer(void* resize_params) {
+        mTarget->resizeRenderer(resize_params);
     }
 
     virtual void requestRendererClone(bool enable) {
@@ -169,8 +169,8 @@ struct AwesomeLocalRenderer : public AwesomeRenderer {
     virtual Vector< sp<IMemory> > getBuffers(){
         return mTarget->getBuffers();
     }
-    virtual void resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) {
-        mTarget->resizeRenderer(width, height, buffercount);
+    virtual void resizeRenderer(void* resize_params) {
+        mTarget->resizeRenderer(resize_params);
     }
     virtual void requestRendererClone(bool enable) {
         mTarget->requestRendererClone(enable);
@@ -1048,7 +1048,14 @@ status_t AwesomePlayer::initRenderer_l() {
             uint32_t outputBufferCnt = -1;
             outputBufferCnt = mVideoSource->getNumofOutputBuffers();
             LOGD("Codec Recommended outputBuffer count after portreconfig %d",outputBufferCnt);
-            mVideoRenderer->resizeRenderer(decodedWidth, decodedHeight,outputBufferCnt);
+            render_resize_params resize_params;
+            resize_params.decoded_width = decodedWidth;
+            resize_params.decoded_height = decodedHeight;
+            resize_params.buffercount = outputBufferCnt;
+            resize_params.display_width = mVideoWidth;
+            resize_params.display_height = mVideoHeight;
+
+            mVideoRenderer->resizeRenderer((void*)(&resize_params));
             return 0;
         }
 #endif

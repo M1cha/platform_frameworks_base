@@ -219,7 +219,7 @@ public:
     virtual Vector< sp<IMemory> > getBuffers() = 0;
     virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) = 0;
     virtual void set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint32_t s3d_order, uint32_t s3d_subsampling) =0;
-    virtual void resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) = 0;
+    virtual void resizeRenderer(void* resize_params) = 0;
     virtual void requestRendererClone(bool enable) = 0;
 #endif
 };

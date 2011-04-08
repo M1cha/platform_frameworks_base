@@ -28,6 +28,13 @@ namespace android {
 
 #ifdef OMAP_ENHANCEMENT
 typedef void (*release_rendered_buffer_callback)(const sp<IMemory>& mem, void *cookie);
+typedef struct {
+    uint32_t decoded_width;
+    uint32_t decoded_height;
+    uint32_t buffercount;
+    uint32_t display_width;
+    uint32_t display_height;
+    }render_resize_params;
 #endif
 
 class VideoRenderer {
@@ -41,7 +48,7 @@ public:
     virtual Vector< sp<IMemory> > getBuffers() = 0;
     virtual bool setCallback(release_rendered_buffer_callback cb, void *cookie) {return false;}
     virtual void set_s3d_frame_layout(uint32_t s3d_mode, uint32_t s3d_fmt, uint32_t s3d_order, uint32_t s3d_subsampling) {}
-    virtual void resizeRenderer(uint32_t width, uint32_t height, uint32_t buffercount) = 0;
+    virtual void resizeRenderer(void* resize_params) = 0;
     virtual void requestRendererClone(bool enable) = 0;
 #endif
 
