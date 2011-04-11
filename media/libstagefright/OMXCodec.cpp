@@ -604,7 +604,7 @@ uint32_t OMXCodec::getComponentQuirks(
         // For Gallery Playback, we call UseBuffer and for all other scenarios (flash
         // playback, stagefright tests, thumbnail generation), we call AllocateBuffer
         // on output ports.
-        quirks |= kRequiresAllocateBufferOnInputPorts;
+        //quirks |= kRequiresAllocateBufferOnInputPorts;
         quirks |= kRequiresAllocateBufferOnOutputPorts;
 
         if(flags & kPreferThumbnailMode)
