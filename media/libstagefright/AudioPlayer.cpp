@@ -310,6 +310,15 @@ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
         return 0;
     }
 
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
+	{
+    Mutex::Autolock autoLock(mLock);
+    mNumFramesPlayed += size / mFrameSize;
+    //Reset the interpolation time
+    mRealTimeInterpolation = GetSystemTimeuSec();
+    }
+#endif
+
     size_t size_done = 0;
     size_t size_remaining = size;
     while (size_remaining > 0) {
@@ -405,12 +414,9 @@ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
         size_remaining -= copy;
     }
 
+#if !defined(TARGET_OMAP4)
     Mutex::Autolock autoLock(mLock);
     mNumFramesPlayed += size_done / mFrameSize;
-
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
-    //Reset the interpolation time
-    mRealTimeInterpolation = GetSystemTimeuSec();
 #endif
     return size_done;
 }
