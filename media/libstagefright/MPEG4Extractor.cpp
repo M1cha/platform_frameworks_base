@@ -2134,7 +2134,45 @@ status_t MPEG4Source::read(
     } else {
         // Whole NAL units are returned but each fragment is prefixed by
         // the start code (0x00 00 00 01).
+#ifdef OMAP_ENHANCEMENT
+        uint8_t *dstData = (uint8_t *)mBuffer->data();
+        size_t dstOffset = 0;
 
+        while (dstOffset < size) {
+            CHECK(dstOffset + mNALLengthSize <= size);
+            ssize_t num_bytes_read = mDataSource->readAt(offset+dstOffset, mSrcBuffer, mNALLengthSize);
+            if (num_bytes_read < (ssize_t)mNALLengthSize) {
+                mBuffer->release();
+                mBuffer = NULL;
+                return ERROR_IO;
+            }
+            size_t nalLength = parseNALSize(&mSrcBuffer[0]);
+            if (dstOffset + nalLength > size) {
+                mBuffer->release();
+                mBuffer = NULL;
+                return ERROR_MALFORMED;
+            }
+
+            if (nalLength == 0) {
+                continue;
+            }
+
+            CHECK(dstOffset + 4 <= mBuffer->size());
+
+            dstData[dstOffset++] = 0;
+            dstData[dstOffset++] = 0;
+            dstData[dstOffset++] = 0;
+            dstData[dstOffset++] = 1;
+            num_bytes_read = mDataSource->readAt(offset+dstOffset, &dstData[dstOffset], nalLength);
+            if (num_bytes_read < (ssize_t)nalLength) {
+                 mBuffer->release();
+                 mBuffer = NULL;
+                 return ERROR_IO;
+            }
+            dstOffset += nalLength;
+        }
+        CHECK_EQ(dstOffset, size);
+#else
         ssize_t num_bytes_read =
             mDataSource->readAt(offset, mSrcBuffer, size);
 
@@ -2176,6 +2214,7 @@ status_t MPEG4Source::read(
             dstOffset += nalLength;
         }
         CHECK_EQ(srcOffset, size);
+#endif
 
         CHECK(mBuffer != NULL);
         mBuffer->set_range(0, dstOffset);
