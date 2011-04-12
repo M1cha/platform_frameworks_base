@@ -33,6 +33,7 @@ import java.io.FileNotFoundException;
 
 /**
  * <p>HDMIObserver monitors for HDMI connection.
+ * @hide
  */
 class HDMIObserver extends UEventObserver {
     private static final String TAG = HDMIObserver.class.getSimpleName();
