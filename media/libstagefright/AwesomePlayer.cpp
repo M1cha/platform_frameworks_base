@@ -906,7 +906,10 @@ status_t AwesomePlayer::play_l() {
 
 #ifdef OMAP_ENHANCEMENT
     if(mVideoSource != NULL) {
-        CHECK(mFirstVideoBuffer == NULL);
+         if (mFirstVideoBuffer != NULL) {
+                    mFirstVideoBuffer->release();
+                    mFirstVideoBuffer = NULL;
+        }
         mFirstVideoBufferResult = mVideoSource->read(&mFirstVideoBuffer);
         if (mFirstVideoBufferResult == INFO_FORMAT_CHANGED) {
             LOGV("First INFO_FORMAT_CHANGED!!!");
