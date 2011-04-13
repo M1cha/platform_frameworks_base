@@ -2789,7 +2789,7 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
                 OMX_VIDEO_PORTDEFINITIONTYPE *videoDef = &def.format.video;
                 int32_t padded_height;
 
-                if (!(mOutputFormat->findInt32(kKeyHeight, &padded_height))) {
+                if (!(mOutputFormat->findInt32(kKeyPaddedHeight, &padded_height))) {
                     padded_height =  videoDef->nFrameHeight;
                 }
 
