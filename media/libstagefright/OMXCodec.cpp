@@ -598,21 +598,11 @@ uint32_t OMXCodec::getComponentQuirks(
     }
 #ifdef TARGET_OMAP4
     else if(!strcmp(componentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
-        // Depending on the usecase, we need to call AllocateBuffer/UseBuffer
-        // on output port. Here, we initialize it to AllocateBuffer. When we receive
-        // the overlay buffers, we remove the quirk kRequiresAllocateBufferOnOutputPorts.
-        // For Gallery Playback, we call UseBuffer and for all other scenarios (flash
-        // playback, stagefright tests, thumbnail generation), we call AllocateBuffer
-        // on output ports.
-        //quirks |= kRequiresAllocateBufferOnInputPorts;
-        quirks |= kRequiresAllocateBufferOnOutputPorts;
+        quirks |= kRequiresAllocateBufferOnInputPorts;
 
         if(flags & kPreferThumbnailMode)
         {
             quirks |= OMXCodec::kThumbnailMode;
-#ifdef NPA_BUFFERS
-            quirks &= ~kRequiresAllocateBufferOnOutputPorts;
-#endif
         }
 
         if(flags & kPreferInterlacedOutputContent) {
@@ -3228,13 +3218,12 @@ void OMXCodec::onCmdComplete(OMX_COMMANDTYPE cmd, OMX_U32 data) {
 
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP4)
                 if(!strcmp(mComponentName, "OMX.TI.DUCATI1.VIDEO.DECODER")){
-                    if((mQuirks & OMXCodec::kThumbnailMode) ||
-                       (mQuirks & OMXCodec::kRequiresAllocateBufferOnOutputPorts)) /* Any Ducati codec non-overlay usecase */
+                    if (mExtBufferAddresses.size() == 0) /* Any Ducati codec non-overlay usecase */
                     {
                         LOGD("OMX_CommandPortDisable Done. Reenabling port for non-overlay playback usecase");
 
                         /*Since we are mostly dealing 1D buffers here,
-                          nStride has to be updaetd as nFrameWidth will change on portreconfig
+                          nStride has to be updated as nFrameWidth will change on portreconfig
                           */
                         OMX_PARAM_PORTDEFINITIONTYPE def;
                         InitOMXParams(&def);
@@ -3249,6 +3238,7 @@ void OMXCodec::onCmdComplete(OMX_COMMANDTYPE cmd, OMX_U32 data) {
                         int32_t padded_width;
                         CHECK(mOutputFormat->findInt32(kKeyPaddedWidth, &padded_width));
                         video_def->nStride = padded_width;
+                        mStride = video_def->nStride;
 
                         LOGE("Updating video_def->nStride with new width %d", (int) video_def->nStride);
 
@@ -4430,9 +4420,6 @@ void OMXCodec::setBuffers(Vector< sp<IMemory> > mBufferAddresses, bool portRecon
 
 #ifdef TARGET_OMAP4
     if(!portReconfig){
-
-        //Dont allocate buffers. Use the one provided.
-        mQuirks &= ~kRequiresAllocateBufferOnOutputPorts;
 
         OMX_PARAM_PORTDEFINITIONTYPE def;
         InitOMXParams(&def);
