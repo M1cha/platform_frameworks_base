@@ -645,6 +645,11 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
         if (isInPlaybackState()) {
             mMediaPlayer.start();
             mCurrentState = STATE_PLAYING;
+            if(SystemProperties.OMAP_ENHANCEMENT) {
+                Intent hdmiIntent =  mContext.registerReceiver(null,
+                                         new IntentFilter(ACTION_HDMI_PLUG));
+                mReceiver.onReceive(mContext, hdmiIntent);
+            }
         }
         mTargetState = STATE_PLAYING;
     }
