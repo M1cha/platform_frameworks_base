@@ -139,6 +139,10 @@ bool SniffASF(const sp<DataSource> &source,
         float *confidence,
         sp<AMessage> *meta);
 
+#ifdef OMAP_ENHANCEMENT
+    dlerror();
+#endif
+
     pASFHandle = dlopen("/system/lib/libittiam_asfextractor.so", RTLD_LAZY | RTLD_GLOBAL);
     if((errstr = dlerror()) != NULL){
         LOGE("dlopen() err: %s", errstr);
