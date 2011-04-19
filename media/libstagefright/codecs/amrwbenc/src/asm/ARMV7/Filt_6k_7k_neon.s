@@ -170,7 +170,7 @@ LOOP_6K7K:
 	  VMLAL.S16 		Q9,D10,D2[3]
 	  VMLAL.S16 		Q10,D11,D3[3]
 	  VMLAL.S16 		Q11,D11,D2[3]
-	  VMLAL.S16 		Q12,D12,D3[3]    
+	  VMLAL.S16 		Q12,D12,D3[3]
 	  VEXT.8  		Q5,Q5,Q6,#2
 	  VMLAL.S16 		Q9,D12,D4[3]
 	  VMLAL.S16 		Q10,D13,D5[3]
@@ -181,10 +181,10 @@ LOOP_6K7K:
 	  VMLAL.S16 		Q10,D15,D7[3]
 	  VMLAL.S16 		Q11,D15,D6[3]
 	  VMLAL.S16 		Q12,D16,D7[3]
-	  VEXT.8 		Q7,Q7,Q8,#2     
+	  VEXT.8 		Q7,Q7,Q8,#2
 
 	  VMOV.S16  		D8,D9
-	  VEXT.8 		Q8,Q8,Q15,#2 
+	  VEXT.8 		Q8,Q8,Q15,#2
 	  VMOV.S16  		D9,D10
 	  VADD.S32  		Q9,Q9,Q10
 	  VMOV.S16  		D10,D11
@@ -214,14 +214,18 @@ LOOP_6K7K:
 	  VST1.S16              {D4, D5, D6}, [r1]!
 	  VST1.S16              D7[0], [r1]!
 	  VST1.S16              D7[1], [r1]!
-                    
+
 Filt_6k_7k_end:
 
-          ADD     		r13, r13, #240  
-          LDMFD   		r13!, {r0 - r12, r15} 
- 
+          ADD     		r13, r13, #240
+.ifdef NEEDS_ARM_ERRATA_754319_754320_ASM
+          VMOV                  s0,s0                       @NOP for ARM Errata
+.endif
+          LDMFD   		r13!, {r0 - r12, r15}
+
 Lable1:
           .word   		fir_6k_7k
+
           @ENDFUNC
           .END
 

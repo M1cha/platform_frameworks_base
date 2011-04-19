@@ -73,6 +73,14 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_CFLAGS := $(VO_CFLAGS)
 
+ifdef NEEDS_ARM_ERRATA_754319_754320
+asm_flags := \
+	--defsym NEEDS_ARM_ERRATA_754319_754320_ASM=1
+
+LOCAL_CFLAGS+= \
+	$(foreach f,$(asm_flags),-Wa,"$(f)")
+endif
+
 ifeq ($(VOTT), v5)
 LOCAL_CFLAGS += -DARMV5E -DARM_INASM -DARMV5_INASM
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/src/asm/ARMV5E
