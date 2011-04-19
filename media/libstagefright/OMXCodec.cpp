@@ -598,7 +598,7 @@ uint32_t OMXCodec::getComponentQuirks(
     }
 #ifdef TARGET_OMAP4
     else if(!strcmp(componentName, "OMX.TI.DUCATI1.VIDEO.DECODER")) {
-        quirks |= kRequiresAllocateBufferOnInputPorts;
+        //quirks |= kRequiresAllocateBufferOnInputPorts;
 
         if(flags & kPreferThumbnailMode)
         {
