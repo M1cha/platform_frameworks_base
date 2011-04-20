@@ -70,7 +70,8 @@ int16_t sei_rbsp(uint8_t *buffer, int32_t length, S3D_params &mS3Dparams);
     {"ftypmp41", 8},
     {"ftypwmf",  7},
     {"ftypMSNV", 8},
-    {"ftyp3g2", 7}
+    {"ftyp3g2", 7},
+    {"ftypskm2",8}
     };
 /*Indicates the number of known types and it should be linked to variable knownFileTypes*/
 #define NUMBER_OF_KNOWN_FILE_TYPES (sizeof(knownFileTypes)/sizeof(struct Mpeg4FileType))
