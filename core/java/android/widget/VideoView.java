@@ -764,6 +764,7 @@ public class VideoView extends SurfaceView implements MediaPlayerControl {
 
     /**
      * Receiver for HDMI-Hotplug intent broadcasts
+     * @hide
      */
     private class VideoPlaybackBroadcastReceiver extends BroadcastReceiver {
         @Override
