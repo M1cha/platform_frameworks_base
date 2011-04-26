@@ -3304,8 +3304,8 @@ double VideoTrack::GetFrameRate() const
 
 AudioTrack::AudioTrack(Segment* pSegment, const Info& i) :
     Track(pSegment, i),
-    m_rate(0.0),
-    m_channels(0),
+    m_rate(8000.0),
+    m_channels(1),
     m_bitDepth(-1)
 {
     assert(i.type == 2);
