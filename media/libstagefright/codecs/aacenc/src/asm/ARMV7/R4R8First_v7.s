@@ -103,6 +103,9 @@ Radix8First_LOOP:
 	bne       			Radix8First_LOOP
 	
 Radix8First_END:
+.ifdef NEEDS_ARM_ERRATA_754319_754320_ASM
+        VMOV                    s0,s0                                                                  @NOP for ARM Errata
+.endif
 	ldmia     sp!, {r4 - r11, pc}	
 SQRT1_2:
 	.word      0x2d413ccd

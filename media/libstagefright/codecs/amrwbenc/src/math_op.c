@@ -108,6 +108,9 @@ void Isqrt_n(
 	{
 		*exp = 0;                          
 		*frac = 0x7fffffffL;               
+#ifdef NEEDS_ARM_ERRATA_754319_754320
+    asm volatile("vmov		s0,s0\n\t");
+#endif
 		return;
 	}
 
@@ -125,6 +128,9 @@ void Isqrt_n(
 	*frac = L_deposit_h(table_isqrt[i]);   /* table[i] << 16         */
 	tmp = vo_sub(table_isqrt[i], table_isqrt[i + 1]);      /* table[i] - table[i+1]) */
 	*frac = vo_L_msu(*frac, tmp, a);          /* frac -=  tmp*a*2       */
+#ifdef NEEDS_ARM_ERRATA_754319_754320
+    asm volatile("vmov		s0,s0\n\t");
+#endif
 
 	return;
 }
