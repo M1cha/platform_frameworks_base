@@ -254,7 +254,7 @@ AndroidRuntime::AndroidRuntime()
     // bitmaps. This globalpool is for images that do not either use the java
     // heap, or are not backed by ashmem. See BitmapFactory.cpp for the key
     // java call site.
-    SkImageRef_GlobalPool::SetRAMBudget(512 * 1024);
+    SkImageRef_GlobalPool::SetRAMBudget(4 * 512 * 1024);
     // There is also a global font cache, but its budget is specified in code
     // see SkFontHost_android.cpp
 
