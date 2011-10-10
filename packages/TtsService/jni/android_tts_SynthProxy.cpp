@@ -626,6 +626,8 @@ android_tts_SynthProxy_synthesizeToFile(JNIEnv *env, jobject thiz, jint jniData,
         jstring textJavaString, jstring filenameJavaString)
 {
     int result = TTS_FAILURE;
+    uint32_t  data32;
+    unsigned short data16;
 
     if (jniData == 0) {
         LOGE("android_tts_SynthProxy_synthesizeToFile(): invalid JNI data");
@@ -687,7 +689,8 @@ android_tts_SynthProxy_synthesizeToFile(JNIEnv *env, jobject thiz, jint jniData,
     header[1] = 'I';
     header[2] = 'F';
     header[3] = 'F';
-    ((uint32_t *)(&header[4]))[0] = filelen - 8;
+    data32 = filelen - 8;
+    memcpy(&header[4], &data32, sizeof(uint32_t));
     header[8] = 'W';
     header[9] = 'A';
     header[10] = 'V';
@@ -698,23 +701,29 @@ android_tts_SynthProxy_synthesizeToFile(JNIEnv *env, jobject thiz, jint jniData,
     header[14] = 't';
     header[15] = ' ';
 
-    ((uint32_t *)(&header[16]))[0] = 16;  // size of fmt
+    data32 = 16;
+    memcpy(&header[16], &data32, sizeof(uint32_t));          // size of fmt
 
     int sampleSizeInByte = (encoding == AudioSystem::PCM_16_BIT ? 2 : 1);
 
-    ((unsigned short *)(&header[20]))[0] = 1;  // format
-    ((unsigned short *)(&header[22]))[0] = channels;  // channels
-    ((uint32_t *)(&header[24]))[0] = rate;  // samplerate
-    ((uint32_t *)(&header[28]))[0] = rate * sampleSizeInByte * channels;// byterate
-    ((unsigned short *)(&header[32]))[0] = sampleSizeInByte * channels;  // block align
-    ((unsigned short *)(&header[34]))[0] = sampleSizeInByte * 8;  // bits per sample
+    data16 = 1;
+    memcpy(&header[20], &data16, sizeof(unsigned short));    // format
+    memcpy(&header[22], &channels, sizeof(unsigned short));  // channels
+    memcpy(&header[24], &rate, sizeof(uint32_t));            // samplerate
+    data32 = rate * sampleSizeInByte * channels;
+    memcpy(&header[28], &data32, sizeof(uint32_t));          // byterate
+    data16 = sampleSizeInByte * channels;
+    memcpy(&header[32], &data16, sizeof(unsigned short));    // block align
+    data16 = sampleSizeInByte * 8;
+    memcpy(&header[34], &data16, sizeof(unsigned short));    // bits per sample
 
     header[36] = 'd';
     header[37] = 'a';
     header[38] = 't';
     header[39] = 'a';
 
-    ((uint32_t *)(&header[40]))[0] = samples * 2;  // size of data
+    data32 = samples * 2;
+    memcpy(&header[40], &data32, sizeof(uint32_t));        // size of data
 
     // Skip back to the beginning and rewrite the header
     fseek(pForAfter->outputFile, 0, SEEK_SET);

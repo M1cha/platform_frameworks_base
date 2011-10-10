@@ -125,6 +125,9 @@ status_t Visualizer::setCaptureCallBack(capture_cbk_t cbk, void* user, uint32_t 
 
 status_t Visualizer::setCaptureSize(uint32_t size)
 {
+    union{void* src_p;
+          effect_param_t* param_p;
+          int32_t* data32_p;}u_cast;
     if (size > VISUALIZER_CAPTURE_SIZE_MAX ||
         size < VISUALIZER_CAPTURE_SIZE_MIN ||
         AudioSystem::popCount(size) != 1) {
@@ -137,12 +140,15 @@ status_t Visualizer::setCaptureSize(uint32_t size)
     }
 
     uint32_t buf32[sizeof(effect_param_t) / sizeof(uint32_t) + 2];
-    effect_param_t *p = (effect_param_t *)buf32;
+    effect_param_t *p;
 
+    u_cast.src_p = buf32;
+    p = u_cast.param_p;
     p->psize = sizeof(uint32_t);
     p->vsize = sizeof(uint32_t);
-    *(int32_t *)p->data = VISU_PARAM_CAPTURE_SIZE;
-    *((int32_t *)p->data + 1)= size;
+    u_cast.src_p = p->data;
+    *(u_cast.data32_p) = VISU_PARAM_CAPTURE_SIZE;
+    *(u_cast.data32_p + 1)= size;
     status_t status = setParameter(p);
 
     LOGV("setCaptureSize size %d  status %d p->status %d", size, status, p->status);
@@ -270,11 +276,17 @@ void Visualizer::periodicCapture()
 uint32_t Visualizer::initCaptureSize()
 {
     uint32_t buf32[sizeof(effect_param_t) / sizeof(uint32_t) + 2];
-    effect_param_t *p = (effect_param_t *)buf32;
+    union{void* src_p;
+          effect_param_t* param_p;
+          int32_t* data32_p;}u_cast;
+    effect_param_t *p;
 
+    u_cast.src_p = buf32;
+    p = u_cast.param_p;
     p->psize = sizeof(uint32_t);
     p->vsize = sizeof(uint32_t);
-    *(int32_t *)p->data = VISU_PARAM_CAPTURE_SIZE;
+    u_cast.src_p = p->data;
+    *(u_cast.data32_p) = VISU_PARAM_CAPTURE_SIZE;
     status_t status = getParameter(p);
 
     if (status == NO_ERROR) {
@@ -283,7 +295,7 @@ uint32_t Visualizer::initCaptureSize()
 
     uint32_t size = 0;
     if (status == NO_ERROR) {
-        size = *((int32_t *)p->data + 1);
+        size = *(u_cast.data32_p + 1);
     }
     mCaptureSize = size;
 

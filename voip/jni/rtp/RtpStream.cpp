@@ -37,6 +37,10 @@ jfieldID gNative;
 
 jint create(JNIEnv *env, jobject thiz, jstring jAddress)
 {
+    union u{sockaddr_storage *ss_p;
+            sockaddr         *sockaddr_p;
+            sockaddr_in      *sockaddr_in_p;
+            sockaddr_in6     *sockaddr_in6_p;}u_casting;
     env->SetIntField(thiz, gNative, -1);
 
     sockaddr_storage ss;
@@ -47,15 +51,16 @@ jint create(JNIEnv *env, jobject thiz, jstring jAddress)
 
     int socket = ::socket(ss.ss_family, SOCK_DGRAM, 0);
     socklen_t len = sizeof(ss);
-    if (socket == -1 || bind(socket, (sockaddr *)&ss, sizeof(ss)) != 0 ||
-        getsockname(socket, (sockaddr *)&ss, &len) != 0) {
+    u_casting.ss_p = &ss;
+    if (socket == -1 || bind(socket, u_casting.sockaddr_p, sizeof(ss)) != 0 ||
+        getsockname(socket, u_casting.sockaddr_p, &len) != 0) {
         jniThrowException(env, "java/net/SocketException", strerror(errno));
         ::close(socket);
         return -1;
     }
 
     uint16_t *p = (ss.ss_family == AF_INET) ?
-        &((sockaddr_in *)&ss)->sin_port : &((sockaddr_in6 *)&ss)->sin6_port;
+        &u_casting.sockaddr_in_p->sin_port : &u_casting.sockaddr_in6_p->sin6_port;
     uint16_t port = ntohs(*p);
     if ((port & 1) == 0) {
         env->SetIntField(thiz, gNative, socket);
@@ -74,7 +79,7 @@ jint create(JNIEnv *env, jobject thiz, jstring jAddress)
             } while (port < 1024);
             *p = htons(port);
 
-            if (bind(socket, (sockaddr *)&ss, sizeof(ss)) == 0) {
+            if (bind(socket, u_casting.sockaddr_p, sizeof(*u_casting.ss_p)) == 0) {
                 env->SetIntField(thiz, gNative, socket);
                 return port;
             }
