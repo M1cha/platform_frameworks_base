@@ -528,7 +528,7 @@ status_t CameraService::Client::registerPreviewBuffers() {
 
     // FIXME: don't use a hardcoded format here.
     ISurface::BufferHeap buffers(w, h, w, h,
-                                 HAL_PIXEL_FORMAT_YCrCb_420_SP,
+                                 HAL_PIXEL_FORMAT_RGB_565,
                                  mOrientation,
                                  0,
                                  mHardware->getPreviewHeap());
@@ -868,6 +868,12 @@ bool CameraService::Client::lockIfMessageWanted(int32_t msgType) {
             LOG1("lockIfMessageWanted(%d): enter sleep", msgType);
         }
         usleep(CHECK_MESSAGE_INTERVAL * 1000);
+     // Return true after 100ms. We don't want to enter in an infinite loop.
+        if (sleepCount == 10) {
+            LOGE("lockIfMessageWanted(%d): timed out in %d ms",
+                msgType, sleepCount * CHECK_MESSAGE_INTERVAL);
+            return true;
+        }
     }
     LOGW("lockIfMessageWanted(%d): dropped unwanted message", msgType);
     return false;
@@ -1027,7 +1033,7 @@ void CameraService::Client::handleShutter(image_rect_type *size) {
         }
         // FIXME: don't use hardcoded format constants here
         ISurface::BufferHeap buffers(w, h, w, h,
-            HAL_PIXEL_FORMAT_YCrCb_420_SP, mOrientation, 0,
+            HAL_PIXEL_FORMAT_RGB_565, mOrientation, 0,
             mHardware->getRawHeap());
 
         mSurface->registerBuffers(buffers);
