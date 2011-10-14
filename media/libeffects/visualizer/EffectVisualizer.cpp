@@ -298,6 +298,7 @@ extern "C" int Visualizer_command(effect_interface_t self, uint32_t cmdCode, uin
 
     android::VisualizerContext * pContext = (android::VisualizerContext *)self;
     int retsize;
+    union {void* src_p; uint32_t* dst_p;}u_cast;
 
     if (pContext == NULL || pContext->mState == VISUALIZER_STATE_UNINITIALIZED) {
         return -EINVAL;
@@ -356,13 +357,14 @@ extern "C" int Visualizer_command(effect_interface_t self, uint32_t cmdCode, uin
         effect_param_t *p = (effect_param_t *)pReplyData;
         p->status = 0;
         *replySize = sizeof(effect_param_t) + sizeof(uint32_t);
+        u_cast.src_p = &p->data;
         if (p->psize != sizeof(uint32_t) ||
-            *(uint32_t *)p->data != VISU_PARAM_CAPTURE_SIZE) {
+            *(uint32_t *)u_cast.dst_p != VISU_PARAM_CAPTURE_SIZE) {
             p->status = -EINVAL;
             break;
         }
         LOGV("get mCaptureSize = %d", pContext->mCaptureSize);
-        *((uint32_t *)p->data + 1) = pContext->mCaptureSize;
+        *((uint32_t *)u_cast.dst_p + 1) = pContext->mCaptureSize;
         p->vsize = sizeof(uint32_t);
         *replySize += sizeof(uint32_t);
         } break;
@@ -374,13 +376,14 @@ extern "C" int Visualizer_command(effect_interface_t self, uint32_t cmdCode, uin
         }
         *(int32_t *)pReplyData = 0;
         effect_param_t *p = (effect_param_t *)pCmdData;
+        u_cast.src_p = &p->data;
         if (p->psize != sizeof(uint32_t) ||
             p->vsize != sizeof(uint32_t) ||
-            *(uint32_t *)p->data != VISU_PARAM_CAPTURE_SIZE) {
+            *(uint32_t *)u_cast.dst_p != VISU_PARAM_CAPTURE_SIZE) {
             *(int32_t *)pReplyData = -EINVAL;
             break;;
         }
-        pContext->mCaptureSize = *((uint32_t *)p->data + 1);
+        pContext->mCaptureSize = *((uint32_t *)u_cast.dst_p + 1);
         LOGV("set mCaptureSize = %d", pContext->mCaptureSize);
         } break;
     case EFFECT_CMD_SET_DEVICE:

@@ -257,6 +257,7 @@ bool AudioStream::mix(int32_t *output, int head, int tail, int sampleRate)
 
 void AudioStream::encode(int tick, AudioStream *chain)
 {
+    union u{sockaddr_storage* src; sockaddr* dst;}u_casting;
     if (tick - mTick >= mInterval) {
         // We just missed the train. Pretend that packets in between are lost.
         int skipped = (tick - mTick) / mInterval;
@@ -287,8 +288,9 @@ void AudioStream::encode(int tick, AudioStream *chain)
                 buffer[3] |= htonl(1 << 23);
                 mDtmfEvent = -1;
             }
+            u_casting.src = &mRemote;
             sendto(mSocket, buffer, sizeof(buffer), MSG_DONTWAIT,
-                (sockaddr *)&mRemote, sizeof(mRemote));
+                u_casting.dst, sizeof(mRemote));
             return;
         }
         mDtmfEvent = -1;
@@ -351,7 +353,8 @@ void AudioStream::encode(int tick, AudioStream *chain)
         LOGV("stream[%d] encoder error", mSocket);
         return;
     }
-    sendto(mSocket, buffer, length + 12, MSG_DONTWAIT, (sockaddr *)&mRemote,
+    u_casting.src = &mRemote;
+    sendto(mSocket, buffer, length + 12, MSG_DONTWAIT, u_casting.dst,
         sizeof(mRemote));
 }
 
@@ -410,20 +413,26 @@ void AudioStream::decode(int tick)
         __attribute__((aligned(4))) uint8_t buffer[2048];
         sockaddr_storage remote;
         socklen_t len = sizeof(remote);
+        uint32_t data32;
+        uint16_t data16;
+        union u{sockaddr_storage* src; sockaddr* dst;}u_casting;
 
+        u_casting.src = &remote;
         length = recvfrom(mSocket, buffer, sizeof(buffer),
-            MSG_TRUNC | MSG_DONTWAIT, (sockaddr *)&remote, &len);
+            MSG_TRUNC | MSG_DONTWAIT, u_casting.dst, &len);
 
         // Do we need to check SSRC, sequence, and timestamp? They are not
         // reliable but at least they can be used to identify duplicates?
+        memcpy(&data32, buffer, sizeof(uint32_t));
         if (length < 12 || length > (int)sizeof(buffer) ||
-            (ntohl(*(uint32_t *)buffer) & 0xC07F0000) != mCodecMagic) {
+            (ntohl(data32) & 0xC07F0000) != mCodecMagic) {
             LOGV("stream[%d] malformed packet", mSocket);
             return;
         }
         int offset = 12 + ((buffer[0] & 0x0F) << 2);
+        memcpy(&data16, &buffer[offset + 2], sizeof(uint16_t));
         if ((buffer[0] & 0x10) != 0) {
-            offset += 4 + (ntohs(*(uint16_t *)&buffer[offset + 2]) << 2);
+            offset += 4 + (ntohs(data16) << 2);
         }
         if ((buffer[0] & 0x20) != 0) {
             length -= buffer[length - 1];
