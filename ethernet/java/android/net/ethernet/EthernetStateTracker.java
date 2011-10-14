@@ -301,6 +301,7 @@ public class EthernetStateTracker extends NetworkStateTracker {
     }
 
     public void handleMessage(Message msg) {
+        EthernetDevInfo info = mEM.getSavedConfig();
 
         synchronized (this) {
             switch (msg.what) {
@@ -309,6 +310,19 @@ public class EthernetStateTracker extends NetworkStateTracker {
                 mStackConnected = true;
                 if (mHWConnected)
                     setState(true, msg.what);
+                else
+                    /*
+                     * Getting a EVENT_INTERFACE_CONFIGURATION_SUCCEEDED message when mHWConnected
+                     * is not set means a EVENT_HW_CONNECTED message was never received.  One such
+                     * case is when 'ip=dhcp' is specified on the kernel command line, setting the
+                     * interface long before userspace has time to read the netlink event from sysfs.
+                     *
+                     * The solution is to check if userspace is supposed to get an IP address via
+                     * DHCP and if so cancel what the kernel did and restart the process in
+                     * Android, hence following the normal connection process.
+                     */
+                    if (info != null && info.getConnectMode().equals(EthernetDevInfo.ETHERNET_CONN_MODE_DHCP))
+                        reconnect();
                 break;
             case EVENT_INTERFACE_CONFIGURATION_FAILED:
                 mStackConnected = false;
@@ -329,7 +343,6 @@ public class EthernetStateTracker extends NetworkStateTracker {
                 if (!mStartingDhcp) {
                     int state = mEM.getState();
                     if (state != mEM.ETHERNET_STATE_DISABLED) {
-                        EthernetDevInfo info = mEM.getSavedConfig();
                         if (info != null && mEM.isConfigured()) {
                             try {
                                 configureInterface(info);
