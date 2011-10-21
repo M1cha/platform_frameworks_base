@@ -13,8 +13,9 @@ LOCAL_SRC_FILES:= 	       \
 	EGL/Loader.cpp 	       \
 #
 
+LOCAL_CFLAGS += -flto -ffast-math
 LOCAL_SHARED_LIBRARIES += libcutils libutils
-LOCAL_LDLIBS := -lpthread -ldl
+LOCAL_LDLIBS := -flto -lpthread -ldl
 LOCAL_MODULE:= libEGL
 
 # needed on sim build because of weird logging issues
@@ -73,7 +74,8 @@ LOCAL_SRC_FILES:= 		\
 #
 
 LOCAL_SHARED_LIBRARIES += libcutils libEGL
-LOCAL_LDLIBS := -lpthread -ldl
+LOCAL_CFLAGS += -flto -ffast-math
+LOCAL_LDLIBS := -flto -lpthread -ldl
 LOCAL_MODULE:= libGLESv1_CM
 
 # needed on sim build because of weird logging issues
@@ -109,7 +111,8 @@ LOCAL_SRC_FILES:= 		\
 #
 
 LOCAL_SHARED_LIBRARIES += libcutils libEGL
-LOCAL_LDLIBS := -lpthread -ldl
+LOCAL_CFLAGS += -flto -ffast-math
+LOCAL_LDLIBS := -flto -lpthread -ldl
 LOCAL_MODULE:= libGLESv2
 
 # needed on sim build because of weird logging issues
@@ -158,7 +161,8 @@ LOCAL_SRC_FILES:= 		\
 	ETC1/etc1.cpp 	\
 #
 
-LOCAL_LDLIBS := -lpthread -ldl
+LOCAL_CFLAGS += -flto -ffast-math
+LOCAL_LDLIBS := -flto -lpthread -ldl
 LOCAL_MODULE:= libETC1
 
 include $(BUILD_SHARED_LIBRARY)
