@@ -179,6 +179,8 @@ private:
         // If the user want us to return a copy of the preview frame (instead
         // of the original one), we allocate mPreviewBuffer and reuse it if possible.
         sp<MemoryHeapBase>              mPreviewBuffer;
+        sp<MemoryHeapBase>              mPreviewHeap;
+        sp<MemoryHeapBase>              mHeap;
 
         // We need to avoid the deadlock when the incoming command thread and
         // the CameraHardwareInterface callback thread both want to grab mLock.

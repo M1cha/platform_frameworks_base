@@ -40,7 +40,9 @@ endif # USE_CAMERA_STUB
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:=               \
-    CameraService.cpp
+    CameraService.cpp \
+    convert.S \
+    rgbconvert.c
 
 LOCAL_SHARED_LIBRARIES:= \
     libui \

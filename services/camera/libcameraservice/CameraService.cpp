@@ -37,6 +37,12 @@
 
 #include "CameraService.h"
 
+extern "C"
+{
+    void convertYUYVtoYUV420SP(unsigned char *buf, unsigned char *out, int width, int height);
+    void convertYUYVtoRGB565(unsigned char *buf, unsigned char *rgb, int width, int height);
+}
+
 namespace android {
 
 // ----------------------------------------------------------------------------
@@ -526,12 +532,13 @@ status_t CameraService::Client::registerPreviewBuffers() {
     CameraParameters params(mHardware->getParameters());
     params.getPreviewSize(&w, &h);
 
+    mPreviewHeap = new MemoryHeapBase( w * h * 2);
     // FIXME: don't use a hardcoded format here.
     ISurface::BufferHeap buffers(w, h, w, h,
                                  HAL_PIXEL_FORMAT_RGB_565,
                                  mOrientation,
                                  0,
-                                 mHardware->getPreviewHeap());
+                                 mPreviewHeap);
 
     status_t result = mSurface->registerBuffers(buffers);
     if (result != NO_ERROR) {
@@ -719,6 +726,8 @@ void CameraService::Client::stopPreview() {
     }
 
     mPreviewBuffer.clear();
+    mPreviewHeap.clear();
+    mHeap.clear();
 }
 
 // stop recording mode
@@ -1047,10 +1056,16 @@ void CameraService::Client::handleShutter(image_rect_type *size) {
 void CameraService::Client::handlePreviewData(const sp<IMemory>& mem) {
     ssize_t offset;
     size_t size;
+    int w, h;
+
+    CameraParameters params(mHardware->getParameters());
+    params.getPreviewSize(&w, &h);
+
     sp<IMemoryHeap> heap = mem->getMemory(&offset, &size);
 
     if (!mUseOverlay) {
         if (mSurface != 0) {
+            convertYUYVtoRGB565((unsigned char*)heap->base(),(unsigned char*)mPreviewHeap->base(),w,h);
             mSurface->postBuffer(offset);
         }
     }
@@ -1083,8 +1098,10 @@ void CameraService::Client::handlePreviewData(const sp<IMemory>& mem) {
     if (c != 0) {
         // Is the received frame copied out or not?
         if (flags & FRAME_CALLBACK_FLAG_COPY_OUT_MASK) {
-            LOG2("frame is copied");
-            copyFrameAndPostCopiedFrame(c, heap, offset, size);
+            if(mHeap==NULL)
+                mHeap = new MemoryHeapBase(size*3/4);
+            convertYUYVtoYUV420SP((unsigned char*)heap->base(),(unsigned char*)mHeap->base(),w,h);
+            copyFrameAndPostCopiedFrame(c, mHeap, offset, size);
         } else {
             LOG2("frame is forwarded");
             mLock.unlock();
