@@ -21,6 +21,7 @@ import com.android.mediaframeworktest.functional.MediaAudioTrackTest;
 import com.android.mediaframeworktest.functional.MediaMetadataTest;
 import com.android.mediaframeworktest.functional.MediaMimeTest;
 import com.android.mediaframeworktest.functional.MediaPlayerApiTest;
+import com.android.mediaframeworktest.functional.MediaSamplesTest;
 import com.android.mediaframeworktest.functional.MediaRecorderTest;
 import com.android.mediaframeworktest.functional.SimTonesTest;
 import com.android.mediaframeworktest.functional.MediaPlayerInvokeTest;
@@ -33,10 +34,12 @@ import com.android.mediaframeworktest.functional.MediaPresetReverbTest;
 import com.android.mediaframeworktest.functional.MediaVirtualizerTest;
 import com.android.mediaframeworktest.functional.MediaVisualizerTest;
 import junit.framework.TestSuite;
+import java.io.File;
+import java.util.Arrays;
+import android.os.Bundle;
 
 import android.test.InstrumentationTestRunner;
 import android.test.InstrumentationTestSuite;
-
 
 /**
  * Instrumentation Test Runner for all MediaPlayer tests.
@@ -49,10 +52,24 @@ import android.test.InstrumentationTestSuite;
 
 public class MediaFrameworkTestRunner extends InstrumentationTestRunner {
 
+    public static String mTargetDir = "/sdcard/";
+
+    @Override
+    public void onCreate (Bundle arguments){
+        String targetDir = (String)arguments.get("targetDir");
+        if(targetDir != null){
+             mTargetDir = targetDir;
+        }
+        super.onCreate(arguments);
+    }
 
     @Override
     public TestSuite getAllTests() {
         TestSuite suite = new InstrumentationTestSuite(this);
+        if((mTargetDir != null) && (mTargetDir != "")){
+            addMMTestCase(suite, MediaFrameworkTestRunner.mTargetDir);
+        }
+        /*
         suite.addTestSuite(MediaPlayerApiTest.class);
         suite.addTestSuite(SimTonesTest.class);
         suite.addTestSuite(MediaMetadataTest.class);
@@ -69,9 +86,40 @@ public class MediaFrameworkTestRunner extends InstrumentationTestRunner {
         suite.addTestSuite(MediaPresetReverbTest.class);
         suite.addTestSuite(MediaVirtualizerTest.class);
         suite.addTestSuite(MediaVisualizerTest.class);
-        return suite;
+  */      return suite;
     }
 
+    public void addMMTestCase(TestSuite suite, String testFilesDir){
+        File dir = new File(testFilesDir);
+        String[] children;
+        if (dir.isFile()){
+            children = new String[]{testFilesDir};
+        }else{
+            children = dir.list();
+        }
+        if (children == null) {
+            return;
+        } else {
+            Arrays.sort(children);
+            int length = children.length;
+            for (int i = 0; i < length; i++) {
+                String filename = children[i];
+                final File subFile = new File(dir + "/" + filename);
+                if (subFile.isDirectory()){
+                    addMMTestCase(suite, subFile.getPath());
+                }else{
+                    MediaSamplesTest tempTestCase= new MediaSamplesTest(){
+                          protected void runTest() throws Exception {
+                               testSubPlay(subFile.getPath());
+                          }
+                    };
+                    tempTestCase.setName(filename);
+                    suite.addTest(tempTestCase);
+                }
+            }
+            return;
+       }
+    }
     @Override
     public ClassLoader getLoader() {
         return MediaFrameworkTestRunner.class.getClassLoader();
