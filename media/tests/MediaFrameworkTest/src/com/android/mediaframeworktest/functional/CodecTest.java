@@ -740,10 +740,21 @@ public class CodecTest {
     static MediaPlayer.OnCompletionListener mCompletionListener = new MediaPlayer.OnCompletionListener() {
         public void onCompletion(MediaPlayer mp) {
             synchronized (onCompletion) {
-                Log.v(TAG, "notify the completion callback");
+                Log.v(TAG, "notify the completion callback from OnCompletion");
                 onCompletion.notify();
                 onCompleteSuccess = true;
             }
+        }
+    };
+    static MediaPlayer.OnErrorListener mErrorListener = new MediaPlayer.OnErrorListener() {
+        public boolean onError(MediaPlayer mp, int what, int extra) {
+             synchronized (onCompletion) {
+                 Log.v(TAG, "notify the completion callback from OnError what=" + what + ", extra=" + extra);
+                 onCompletion.notify();
+                 onCompleteSuccess = false;
+             }
+             //avoid to execute the complete again
+             return true;
         }
     };
 
@@ -765,6 +776,7 @@ public class CodecTest {
         }
         try {
             mMediaPlayer.setOnCompletionListener(mCompletionListener);
+            mMediaPlayer.setOnErrorListener(mErrorListener);
             Log.v(TAG, "playMediaSamples: sample file name " + filePath);
             mMediaPlayer.setDataSource(filePath);
             mMediaPlayer.setDisplay(MediaFrameworkTest.mSurfaceView.getHolder());
