@@ -1815,6 +1815,10 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
         return err;
     }
 
+    if (mNativeWindow != NULL) {
+         initNativeWindowCrop();
+    }
+
     err = applyRotation();
     if (err != OK) {
         return err;
@@ -2041,6 +2045,8 @@ status_t OMXCodec::pushBlankBuffersToNativeWindow() {
                 strerror(-err), -err);
         goto error;
     }
+
+    initNativeWindowCrop();
 
     err = native_window_set_usage(mNativeWindow.get(),
             GRALLOC_USAGE_SW_WRITE_OFTEN);
@@ -4559,10 +4565,6 @@ void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
                             0, 0,
                             video_def->nFrameWidth - 1,
                             video_def->nFrameHeight - 1);
-                }
-
-                if (mNativeWindow != NULL) {
-                     initNativeWindowCrop();
                 }
             }
             break;
