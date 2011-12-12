@@ -50,6 +50,21 @@ using namespace android;
 // ----------------------------------------------------------------------------
 
 #define EGL_VERSION_HW_ANDROID  0x3143
+static char const * const sVendorString     = "Android";
+static char const * const sVersionString    = "1.4 Android META-EGL";
+static char const * const sClientApiString  = "OpenGL ES";
+static char const * const sExtensionString  =
+        "EGL_KHR_image "
+        "EGL_KHR_image_base "
+        "EGL_KHR_image_pixmap "
+        "EGL_KHR_gl_texture_2D_image "
+        "EGL_KHR_gl_texture_cubemap_image "
+        "EGL_KHR_gl_renderbuffer_image "
+        "EGL_KHR_fence_sync "
+        "EGL_ANDROID_image_native_buffer "
+        "EGL_ANDROID_swap_rectangle "
+  /*        "EGL_NV_system_time "*/
+        ;
 
 struct extention_map_t {
     const char* name;
@@ -65,10 +80,13 @@ static const extention_map_t sExtentionMap[] = {
             (__eglMustCastToProperFunctionPointerType)&eglCreateImageKHR },
     { "eglDestroyImageKHR",
             (__eglMustCastToProperFunctionPointerType)&eglDestroyImageKHR },
-    { "eglGetSystemTimeFrequencyNV",
+    { "eglSetSwapRectangleANDROID",
+            (__eglMustCastToProperFunctionPointerType)&eglSetSwapRectangleANDROID },
+    /* { "eglGetSystemTimeFrequencyNV",
+>>>>>>> EGL: Remove unused NVidia egl extensions.
             (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeFrequencyNV },
     { "eglGetSystemTimeNV",
-            (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeNV },
+    (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeNV },*/
 };
 
 // accesses protected by sExtensionMapMutex
@@ -1447,7 +1465,7 @@ EGLBoolean eglGetSyncAttribKHR(EGLDisplay dpy, EGLSyncKHR sync, EGLint attribute
 // ----------------------------------------------------------------------------
 // NVIDIA extensions
 // ----------------------------------------------------------------------------
-EGLuint64NV eglGetSystemTimeFrequencyNV()
+/*EGLuint64NV eglGetSystemTimeFrequencyNV()
 {
     clearError();
 
@@ -1486,3 +1504,4 @@ EGLuint64NV eglGetSystemTimeNV()
 
     return setErrorQuiet(EGL_BAD_DISPLAY, 0);
 }
+*/
