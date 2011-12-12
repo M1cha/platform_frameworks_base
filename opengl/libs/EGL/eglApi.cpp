@@ -62,7 +62,7 @@ static char const * const sExtensionString  =
         "EGL_KHR_fence_sync "
         "EGL_ANDROID_image_native_buffer "
         "EGL_ANDROID_swap_rectangle "
-        "EGL_NV_system_time "
+  /*        "EGL_NV_system_time "*/
         ;
 
 struct extention_map_t {
@@ -81,10 +81,10 @@ static const extention_map_t sExtentionMap[] = {
             (__eglMustCastToProperFunctionPointerType)&eglDestroyImageKHR },
     { "eglSetSwapRectangleANDROID",
             (__eglMustCastToProperFunctionPointerType)&eglSetSwapRectangleANDROID },
-    { "eglGetSystemTimeFrequencyNV",
+    /* { "eglGetSystemTimeFrequencyNV",
             (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeFrequencyNV },
     { "eglGetSystemTimeNV",
-            (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeNV },
+    (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeNV },*/
 };
 
 // accesses protected by sExtensionMapMutex
@@ -1466,7 +1466,7 @@ EGLBoolean eglSetSwapRectangleANDROID(EGLDisplay dpy, EGLSurface draw,
 // ----------------------------------------------------------------------------
 // NVIDIA extensions
 // ----------------------------------------------------------------------------
-EGLuint64NV eglGetSystemTimeFrequencyNV()
+/*EGLuint64NV eglGetSystemTimeFrequencyNV()
 {
     clearError();
 
@@ -1505,3 +1505,4 @@ EGLuint64NV eglGetSystemTimeNV()
 
     return setErrorQuiet(EGL_BAD_DISPLAY, 0);
 }
+*/
