@@ -1847,14 +1847,14 @@ status_t SurfaceFlinger::renderScreenToTextureLocked(DisplayID dpy,
     GLuint name, tname;
     glGenTextures(1, &tname);
     glBindTexture(GL_TEXTURE_2D, tname);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
-            hw_w, hw_h, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+            hw_w, hw_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
     if (glGetError() != GL_NO_ERROR) {
         while ( glGetError() != GL_NO_ERROR ) ;
         GLint tw = (2 << (31 - clz(hw_w)));
         GLint th = (2 << (31 - clz(hw_h)));
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
-                tw, th, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                tw, th, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
         u = GLfloat(hw_w) / tw;
         v = GLfloat(hw_h) / th;
     }
