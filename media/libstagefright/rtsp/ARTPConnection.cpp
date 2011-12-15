@@ -120,24 +120,21 @@ void ARTPConnection::MakePortPair(
     start &= ~1;
 
     for (unsigned port = start; port < 65536; port += 2) {
-        union {
-            struct sockaddr_in addr;
-            struct sockaddr addr_generic;
-        };
+        struct sockaddr_in addr;
         memset(addr.sin_zero, 0, sizeof(addr.sin_zero));
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
         addr.sin_port = htons(port);
 
         if (bind(*rtpSocket,
-                 &addr_generic, sizeof(addr)) < 0) {
+                 (const struct sockaddr *)&addr, sizeof(addr)) < 0) {
             continue;
         }
 
         addr.sin_port = htons(port + 1);
 
         if (bind(*rtcpSocket,
-                 &addr_generic, sizeof(addr)) == 0) {
+                 (const struct sockaddr *)&addr, sizeof(addr)) == 0) {
             *rtpPort = port;
             return;
         }
@@ -330,14 +327,9 @@ void ARTPConnection::onPollStreams() {
             if (buffer->size() > 0) {
                 LOGV("Sending RR...");
 
-                union {
-                    sockaddr_in *sa_in;
-                    sockaddr *sa;
-                };
-		sa_in = &s->mRemoteRTCPAddr;
                 ssize_t n = sendto(
                         s->mRTCPSocket, buffer->data(), buffer->size(), 0,
-                        sa,
+                        (const struct sockaddr *)&s->mRemoteRTCPAddr,
                         sizeof(s->mRemoteRTCPAddr));
                 CHECK_EQ(n, (ssize_t)buffer->size());
 
@@ -358,18 +350,12 @@ status_t ARTPConnection::receive(StreamInfo *s, bool receiveRTP) {
         (!receiveRTP && s->mNumRTCPPacketsReceived == 0)
             ? sizeof(s->mRemoteRTCPAddr) : 0;
 
-    union {
-        sockaddr_in *sa_in;
-        sockaddr *sa;
-    };
-    sa_in = &s->mRemoteRTCPAddr;
-
     ssize_t nbytes = recvfrom(
             receiveRTP ? s->mRTPSocket : s->mRTCPSocket,
             buffer->data(),
             buffer->capacity(),
             0,
-            remoteAddrLen > 0 ? sa : NULL,
+            remoteAddrLen > 0 ? (struct sockaddr *)&s->mRemoteRTCPAddr : NULL,
             remoteAddrLen > 0 ? &remoteAddrLen : NULL);
 
     if (nbytes < 0) {
