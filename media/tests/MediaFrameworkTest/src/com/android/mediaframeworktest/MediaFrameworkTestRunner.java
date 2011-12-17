@@ -42,10 +42,7 @@ import java.io.File;
 import java.util.Arrays;
 import android.os.Bundle;
 
-<<<<<<< HEAD
 import android.os.Bundle;
-=======
->>>>>>> 52140cee85d3aa2ed7501d58fa8d07788f1a4085
 import junit.framework.TestSuite;
 import android.test.InstrumentationTestRunner;
 import android.test.InstrumentationTestSuite;
@@ -61,10 +58,7 @@ import android.util.Log;
  */
 
 public class MediaFrameworkTestRunner extends InstrumentationTestRunner {
-<<<<<<< HEAD
     public static int mMinCameraFps = 0;
-=======
->>>>>>> 52140cee85d3aa2ed7501d58fa8d07788f1a4085
     public static String mTargetDir = "/sdcard/";
     private static String TAG = "MediaFrameworkTestRunner";
     @Override
