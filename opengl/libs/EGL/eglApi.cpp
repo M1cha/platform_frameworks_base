@@ -83,7 +83,6 @@ static const extention_map_t sExtentionMap[] = {
     { "eglSetSwapRectangleANDROID",
             (__eglMustCastToProperFunctionPointerType)&eglSetSwapRectangleANDROID },
     /* { "eglGetSystemTimeFrequencyNV",
->>>>>>> EGL: Remove unused NVidia egl extensions.
             (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeFrequencyNV },
     { "eglGetSystemTimeNV",
     (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeNV },*/
@@ -989,6 +988,10 @@ const char* eglQueryString(EGLDisplay dpy, EGLint name)
         case EGL_VERSION:
             return dp->getVersionString();
         case EGL_EXTENSIONS:
+            if (NULL != dp->disp[IMPL_HARDWARE].queryString.extensions)
+                return dp->disp[IMPL_HARDWARE].queryString.extensions;
+	    else
+                return sExtensionString;
             return dp->getExtensionString();
         case EGL_CLIENT_APIS:
             return dp->getClientApiString();
