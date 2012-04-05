@@ -68,6 +68,7 @@ public:
         // Callback returns the number of bytes actually written to the buffer.
         typedef size_t (*AudioCallback)(
                 AudioSink *audioSink, void *buffer, size_t size, void *cookie);
+        typedef void (*LatencyCallback)(uint32_t latency, void *cookie);
 
         virtual             ~AudioSink() {}
         virtual bool        ready() const = 0; // audio output is open and ready
@@ -88,7 +89,8 @@ public:
                 int format=AUDIO_FORMAT_PCM_16_BIT,
                 int bufferCount=DEFAULT_AUDIOSINK_BUFFERCOUNT,
                 AudioCallback cb = NULL,
-                void *cookie = NULL) = 0;
+                void *cookie = NULL,
+                LatencyCallback latencyCb = NULL) = 0;
 
         virtual void        start() = 0;
         virtual ssize_t     write(const void* buffer, size_t size) = 0;
