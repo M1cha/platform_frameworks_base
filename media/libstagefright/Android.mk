@@ -6,6 +6,11 @@ include frameworks/base/media/libstagefright/codecs/common/Config.mk
 ifeq ($(BOARD_HAVE_CODEC_SUPPORT),SAMSUNG_CODEC_SUPPORT)
 LOCAL_CFLAGS     += -DSAMSUNG_CODEC_SUPPORT
 endif
+
+ifeq ($(BOARD_HAVE_CODEC_SUPPORT),STERICSSON_CODEC_SUPPORT)
+        LOCAL_CFLAGS += -DSTERICSSON_CODEC_SUPPORT
+endif
+
 LOCAL_SRC_FILES:=                         \
         ACodec.cpp                        \
         AACExtractor.cpp                  \
@@ -40,6 +45,7 @@ LOCAL_SRC_FILES:=                         \
         OMXClient.cpp                     \
         OMXCodec.cpp                      \
         OggExtractor.cpp                  \
+        PCMExtractor.cpp                  \
         SampleIterator.cpp                \
         SampleTable.cpp                   \
         StagefrightMediaScanner.cpp       \

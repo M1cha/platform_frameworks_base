@@ -29,7 +29,7 @@
 #include <utils/String8.h>
 #include <utils/Vector.h>
 #include <utils/threads.h>
-
+#include <hardware/copybit.h>
 #define ANDROID_GRAPHICS_SURFACETEXTURE_JNI_ID "mSurfaceTexture"
 
 namespace android {
@@ -47,6 +47,7 @@ public:
     };
     enum { NUM_BUFFER_SLOTS = 32 };
     enum { NO_CONNECTED_API = 0 };
+    enum { NUM_BLIT_BUFFER_SLOTS = 2 };
 
     struct FrameAvailableListener : public virtual RefBase {
         // onFrameAvailable() is called from queueBuffer() each time an
@@ -138,6 +139,16 @@ public:
     // This call may only be made while the OpenGL ES context to which the
     // target texture belongs is bound to the calling thread.
     status_t updateTexImage();
+
+    // A surface that uses a non-native format requires conversion of
+    // its buffers. This conversion can be deferred until the layer
+    // based on this surface is drawn.
+    status_t updateTexImage(bool deferConversion);
+
+    // convert() performs the deferred texture conversion as scheduled
+    // by updateTexImage(bool deferConversion).
+    // The method returns immediately if no conversion is necessary.
+    status_t convert();
 
     // setBufferCountServer set the buffer count. If the client has requested
     // a buffer count using setBufferCount, the server-buffer count will
@@ -262,6 +273,12 @@ private:
     // createImage creates a new EGLImage from a GraphicBuffer.
     EGLImageKHR createImage(EGLDisplay dpy,
             const sp<GraphicBuffer>& graphicBuffer);
+
+    // returns TRUE if buffer needs color format conversion
+    bool conversionIsNeeded(const sp<GraphicBuffer>& graphicBuffer);
+
+    // converts buffer to a suitable color format
+    status_t convert(sp<GraphicBuffer> &srcBuf, sp<GraphicBuffer> &dstBuf);
 
     status_t setBufferCountServerLocked(int bufferCount);
 
@@ -508,7 +525,33 @@ private:
     // with the surface Texture.
     uint64_t mFrameCounter;
 
+    // mBlitEngine is the handle to the copybit device which will be used in
+    // case color transform is needed before the EGL image is created.
+    copybit_device_t* mBlitEngine;
 
+    // mBlitSlots contains several buffers which will
+    // be rendered alternately in case color transform is needed (instead
+    // of rendering the buffers in mSlots).
+    BufferSlot mBlitSlots[NUM_BLIT_BUFFER_SLOTS];
+
+    // mNextBlitSlot is the index of the blitter buffer (in mBlitSlots) which
+    // will be used in the next color transform.
+    int mNextBlitSlot;
+
+    // mConversionSrcSlot designates the slot where source buffer
+    // for the last deferred updateTexImage is located.
+    int mConversionSrcSlot;
+
+    // mConversionBltSlot designates the slot where destination buffer
+    // for the last deferred updateTexImage is located.
+    int mConversionBltSlot;
+
+    // mNeedsConversion indicates that a format conversion is necessary
+    // before the layer based on this surface is drawn.
+    // This flag is set whenever updateTexImage() with deferred conversion
+    // is called. It is cleared once the layer is drawn,
+    // or when updateTexImage() w/o deferred conversion is called.
+    bool mNeedsConversion;
 };
 
 // ----------------------------------------------------------------------------

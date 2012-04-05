@@ -188,6 +188,18 @@ typedef void* GLeglImageOES;
 #endif
 
 /*------------------------------------------------------------------------*
+ * ARM extension tokens
+ *------------------------------------------------------------------------*/
+
+/* GL_ARM_mali_shader_binary */
+#ifndef GL_ARM_mali_shader_binary
+#define GL_MALI_SHADER_BINARY_ARM                               0x8F60
+#endif
+
+/* GL_ARM_rgba8 */
+/* No new tokens introduced by this extension. */
+
+/*------------------------------------------------------------------------*
  * EXT extension tokens
  *------------------------------------------------------------------------*/
 
@@ -600,6 +612,20 @@ typedef void (GL_APIENTRYP PFNGLGETPERFMONITORCOUNTERDATAAMDPROC) (GLuint monito
 /* GL_AMD_program_binary_Z400 */
 #ifndef GL_AMD_program_binary_Z400
 #define GL_AMD_program_binary_Z400 1
+#endif
+
+/*------------------------------------------------------------------------*
+ * ARM extension functions
+ *------------------------------------------------------------------------*/
+
+/* GL_ARM_mali_shader_binary */
+#ifndef GL_ARM_mali_shader_binary
+#define GL_ARM_mali_shader_binary 1
+#endif
+
+/* GL_ARM_rgba8 */
+#ifndef GL_ARM_rgba8
+#define GL_ARM_rgba8 1
 #endif
 
 /*------------------------------------------------------------------------*

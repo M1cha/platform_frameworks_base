@@ -244,6 +244,16 @@ void Layer::setPerFrameData(hwc_layer_t* hwcl) {
 
 void Layer::onDraw(const Region& clip) const
 {
+    // Convert the texture to a native format if need be.
+    // convert() returns immediately if no conversion is necessary.
+    if (mSurfaceTexture != NULL) {
+        status_t res = mSurfaceTexture->convert();
+        if (res != NO_ERROR) {
+            LOGE("Layer::onDraw: texture conversion failed. "
+                "Texture content for this layer will not be initialized.");
+        }
+    }
+
     if (CC_UNLIKELY(mActiveBuffer == 0)) {
         // the texture has not been created yet, this Layer has
         // in fact never been drawn into. This happens frequently with
@@ -404,7 +414,7 @@ void Layer::lockPageFlip(bool& recomputeVisibleRegions)
             mFlinger->signalEvent();
         }
 
-        if (mSurfaceTexture->updateTexImage() < NO_ERROR) {
+        if (mSurfaceTexture->updateTexImage(true) < NO_ERROR) {
             // something happened!
             recomputeVisibleRegions = true;
             return;
