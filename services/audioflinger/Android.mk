@@ -2,6 +2,10 @@ LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
 
+ifeq ($(BOARD_HAVE_FMRADIO_SUPPORT),STERICSSON_FMRADIO_SUPPORT)
+        LOCAL_CFLAGS += -DSTERICSSON_FMRADIO_SUPPORT
+endif
+
 LOCAL_SRC_FILES:=               \
     AudioFlinger.cpp            \
     AudioMixer.cpp.arm          \

@@ -306,14 +306,15 @@ audio_io_handle_t AudioPolicyService::getInput(int inputSource,
                                     uint32_t format,
                                     uint32_t channels,
                                     audio_in_acoustics_t acoustics,
-                                    int audioSession)
+                                    int audioSession,
+                                    audio_input_clients *inputClientId)
 {
     if (mpAudioPolicy == NULL) {
         return 0;
     }
     Mutex::Autolock _l(mLock);
     audio_io_handle_t input = mpAudioPolicy->get_input(mpAudioPolicy, inputSource, samplingRate,
-                                                       format, channels, acoustics);
+                                                       format, channels, acoustics, inputClientId);
 
     if (input == 0) {
         return input;
@@ -1411,7 +1412,8 @@ static audio_io_handle_t aps_open_input(void *service,
                                             uint32_t *pSamplingRate,
                                             uint32_t *pFormat,
                                             uint32_t *pChannels,
-                                            uint32_t acoustics)
+                                            uint32_t acoustics,
+                                            uint32_t *inputClientId)
 {
     sp<IAudioFlinger> af = AudioSystem::get_audio_flinger();
     if (af == NULL) {
@@ -1420,16 +1422,16 @@ static audio_io_handle_t aps_open_input(void *service,
     }
 
     return af->openInput(pDevices, pSamplingRate, pFormat, pChannels,
-                         acoustics);
+                         acoustics, inputClientId);
 }
 
-static int aps_close_input(void *service, audio_io_handle_t input)
+static int aps_close_input(void *service, audio_io_handle_t input, uint32_t *inputClientId = NULL)
 {
     sp<IAudioFlinger> af = AudioSystem::get_audio_flinger();
     if (af == NULL)
         return PERMISSION_DENIED;
 
-    return af->closeInput(input);
+    return af->closeInput(input, inputClientId);
 }
 
 static int aps_set_stream_output(void *service, audio_stream_type_t stream,

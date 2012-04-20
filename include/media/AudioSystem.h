@@ -110,7 +110,6 @@ public:
     static int newAudioSessionId();
     static void acquireAudioSessionId(int audioSession);
     static void releaseAudioSessionId(int audioSession);
-
     // types of io configuration change events received with ioConfigChanged()
     enum io_config_event {
         OUTPUT_OPENED,
@@ -163,7 +162,8 @@ public:
                                     uint32_t format = AUDIO_FORMAT_DEFAULT,
                                     uint32_t channels = AUDIO_CHANNEL_IN_MONO,
                                     audio_in_acoustics_t acoustics = (audio_in_acoustics_t)0,
-                                    int sessionId = 0);
+                                    int sessionId = 0,
+                                    audio_input_clients *inputClientId = NULL);
     static status_t startInput(audio_io_handle_t input);
     static status_t stopInput(audio_io_handle_t input);
     static void releaseInput(audio_io_handle_t input);

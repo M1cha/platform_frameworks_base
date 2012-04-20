@@ -1503,7 +1503,7 @@ void MediaPlayerService::AudioOutput::CallbackWrapper(
     AudioTrack::Buffer *buffer = (AudioTrack::Buffer *)info;
 
     size_t actualSize = (*me->mCallback)(
-            me, buffer->raw, buffer->size, me->mCallbackCookie);
+           me, buffer->raw, buffer->size, me->mCallbackCookie);
 
     if (actualSize == 0 && buffer->size > 0) {
         // We've reached EOS but the audio track is not stopped yet,
