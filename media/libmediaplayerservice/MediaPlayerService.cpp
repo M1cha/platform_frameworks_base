@@ -1515,12 +1515,12 @@ void MediaPlayerService::AudioOutput::CallbackWrapper(
     } else if (event == AudioTrack::EVENT_LATENCY_CHANGED) {
         AudioOutput *me = (AudioOutput *)cookie;
 
-        uint32_t *newLatency = (uint32_t *)info;
-        me->mLatency = *newLatency;
+        uint32_t *syncLatency = (uint32_t *)info;
         if (me->mLatencyCallback != NULL) {
-            (*me->mLatencyCallback)(*newLatency, me->mCallbackCookie);
+            (*me->mLatencyCallback)(*syncLatency, me->mCallbackCookie);
         }
     }
+
 }
 
 int MediaPlayerService::AudioOutput::getSessionId()

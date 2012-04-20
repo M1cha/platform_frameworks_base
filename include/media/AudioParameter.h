@@ -46,7 +46,7 @@ public:
     static const char *keyChannels;
     static const char *keyFrameCount;
     static const char *keyInputSource;
-    static const char *keyLatency;
+    static const char *keySinkLatency;
 
     String8 toString();
 

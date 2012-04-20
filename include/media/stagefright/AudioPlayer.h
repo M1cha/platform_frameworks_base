@@ -101,6 +101,7 @@ private:
     static size_t AudioSinkCallback(
             MediaPlayerBase::AudioSink *audioSink,
             void *data, size_t size, void *me);
+
     static void LatencyCallback(uint32_t latency, void *cookie);
     size_t fillBuffer(void *data, size_t size);
 

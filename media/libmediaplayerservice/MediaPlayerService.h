@@ -86,6 +86,7 @@ class MediaPlayerService : public BnMediaPlayerService
                 int format, int bufferCount,
                 AudioCallback cb, void *cookie,
                 LatencyCallback latencyCb = NULL);
+
         virtual void            start();
         virtual ssize_t         write(const void* buffer, size_t size);
         virtual void            stop();

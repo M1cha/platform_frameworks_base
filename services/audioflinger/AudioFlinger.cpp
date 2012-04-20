@@ -1712,6 +1712,7 @@ void AudioFlinger::PlaybackThread::audioConfigChanged_l(int event, int param) {
         break;
 
     case AudioSystem::STREAM_CONFIG_CHANGED:
+    case AudioSystem::SINK_LATENCY_CHANGED:
         param2 = &param;
     case AudioSystem::OUTPUT_CLOSED:
     default:
@@ -2347,7 +2348,6 @@ void AudioFlinger::MixerThread::deleteTrackName_l(int name)
 bool AudioFlinger::MixerThread::checkForNewParameters_l()
 {
     bool reconfig = false;
-    bool updateLatency = false;
 
     while (!mNewParameters.isEmpty()) {
         status_t status = NO_ERROR;
@@ -2411,8 +2411,8 @@ bool AudioFlinger::MixerThread::checkForNewParameters_l()
                 mEffectChains[i]->setDevice_l(mDevice);
             }
         }
-        if (param.getInt(String8(AudioParameter::keyLatency), value) == NO_ERROR) {
-            updateLatency = true;
+        if (param.getInt(String8(AudioParameter::keySinkLatency), value) == NO_ERROR) {
+            sendConfigEvent_l(AudioSystem::SINK_LATENCY_CHANGED, value);
         }
 
         if (status == NO_ERROR) {
@@ -2438,9 +2438,6 @@ bool AudioFlinger::MixerThread::checkForNewParameters_l()
                         mTracks[i]->mCblk->sampleRate = 2 * sampleRate();
                     }
                 }
-                sendConfigEvent_l(AudioSystem::OUTPUT_CONFIG_CHANGED);
-            }
-            if (status == NO_ERROR && updateLatency) {
                 sendConfigEvent_l(AudioSystem::OUTPUT_CONFIG_CHANGED);
             }
         }

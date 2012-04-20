@@ -124,6 +124,8 @@ AudioTrack::~AudioTrack()
     LOGV_IF(mSharedBuffer != 0, "Destructor sharedBuffer: %p", mSharedBuffer->pointer());
 
     if (mStatus == NO_ERROR) {
+        AudioSystem::unregisterLatencyNotificationClient(mLatencyClientId);
+
         // Make sure that callback function exits in the case where
         // it is looping on buffer full condition in obtainBuffer().
         // Otherwise the callback thread will never exit.
@@ -136,7 +138,6 @@ AudioTrack::~AudioTrack()
         IPCThreadState::self()->flushCommands();
         AudioSystem::releaseAudioSessionId(mSessionId);
     }
-    AudioSystem::unregisterLatencyNotificationClient(mLatencyClientId);
 }
 
 status_t AudioTrack::set(
@@ -264,8 +265,6 @@ status_t AudioTrack::set(
     mFlags = flags;
     AudioSystem::acquireAudioSessionId(mSessionId);
     mRestoreStatus = NO_ERROR;
-    mLatencyClientId = AudioSystem::registerLatencyNotificationClient(
-                                    &AudioTrack::LatencyCallbackWrapper, this);
     return NO_ERROR;
 }
 
@@ -823,6 +822,13 @@ status_t AudioTrack::createTrack_l(
     mCblk->waitTimeMs = 0;
     mRemainingFrames = mNotificationFramesAct;
     mLatency = afLatency + (1000*mCblk->frameCount) / sampleRate;
+
+    if (mLatencyClientId != -1) {
+        AudioSystem::unregisterLatencyNotificationClient(mLatencyClientId);
+    }
+    mLatencyClientId = AudioSystem::registerLatencyNotificationClient(
+                                    &AudioTrack::LatencyCallback, this, output);
+
     return NO_ERROR;
 }
 
@@ -1282,24 +1288,12 @@ status_t AudioTrack::dump(int fd, const Vector<String16>& args) const
 }
 
 // static
-void AudioTrack::LatencyCallbackWrapper(void *cookie, audio_io_handle_t output, uint32_t latency)
+void AudioTrack::LatencyCallback(void *cookie, audio_io_handle_t output, uint32_t sinkLatency)
 {
-    static_cast<AudioTrack *>(cookie)->latencyCallback(output, latency);
-}
-
-void AudioTrack::latencyCallback(audio_io_handle_t output, uint32_t latency)
-{
-    audio_io_handle_t myOutput = getOutput();
-    if (output != myOutput) {
-        return;
-    }
-
-    uint32_t oldLatency = mLatency;
-    mLatency = latency + (1000*mCblk->frameCount) / mCblk->sampleRate;
-    LOGV("new latency for output %d (old latency %d, new latency %d)", output, oldLatency, mLatency);
-
-    if (mCbf != NULL) {
-        mCbf(EVENT_LATENCY_CHANGED, mUserData, &mLatency);
+    AudioTrack *me = static_cast<AudioTrack *>(cookie);
+    uint32_t syncLatency = me->mLatency + sinkLatency;
+    if (me->mCbf != NULL) {
+        me->mCbf(EVENT_LATENCY_CHANGED, me->mUserData, &syncLatency);
     }
 }
 
