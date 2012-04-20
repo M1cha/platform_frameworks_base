@@ -84,7 +84,8 @@ class MediaPlayerService : public BnMediaPlayerService
         virtual status_t        open(
                 uint32_t sampleRate, int channelCount,
                 int format, int bufferCount,
-                AudioCallback cb, void *cookie);
+                AudioCallback cb, void *cookie,
+                LatencyCallback latencyCb = NULL);
         virtual void            start();
         virtual ssize_t         write(const void* buffer, size_t size);
         virtual void            stop();
@@ -107,6 +108,7 @@ class MediaPlayerService : public BnMediaPlayerService
         AudioTrack*             mTrack;
         AudioCallback           mCallback;
         void *                  mCallbackCookie;
+        LatencyCallback         mLatencyCallback;
         int                     mStreamType;
         float                   mLeftVolume;
         float                   mRightVolume;
@@ -139,7 +141,8 @@ class MediaPlayerService : public BnMediaPlayerService
         virtual status_t        open(
                 uint32_t sampleRate, int channelCount, int format,
                 int bufferCount = 1,
-                AudioCallback cb = NULL, void *cookie = NULL);
+                AudioCallback cb = NULL, void *cookie = NULL,
+                LatencyCallback latencyCb = NULL);
 
         virtual void            start();
         virtual ssize_t         write(const void* buffer, size_t size);

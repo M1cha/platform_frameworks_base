@@ -136,6 +136,7 @@ AudioTrack::~AudioTrack()
         IPCThreadState::self()->flushCommands();
         AudioSystem::releaseAudioSessionId(mSessionId);
     }
+    AudioSystem::unregisterLatencyNotificationClient(mLatencyClientId);
 }
 
 status_t AudioTrack::set(
@@ -263,6 +264,8 @@ status_t AudioTrack::set(
     mFlags = flags;
     AudioSystem::acquireAudioSessionId(mSessionId);
     mRestoreStatus = NO_ERROR;
+    mLatencyClientId = AudioSystem::registerLatencyNotificationClient(
+                                    &AudioTrack::LatencyCallbackWrapper, this);
     return NO_ERROR;
 }
 
@@ -1276,6 +1279,28 @@ status_t AudioTrack::dump(int fd, const Vector<String16>& args) const
     result.append(buffer);
     ::write(fd, result.string(), result.size());
     return NO_ERROR;
+}
+
+// static
+void AudioTrack::LatencyCallbackWrapper(void *cookie, audio_io_handle_t output, uint32_t latency)
+{
+    static_cast<AudioTrack *>(cookie)->latencyCallback(output, latency);
+}
+
+void AudioTrack::latencyCallback(audio_io_handle_t output, uint32_t latency)
+{
+    audio_io_handle_t myOutput = getOutput();
+    if (output != myOutput) {
+        return;
+    }
+
+    uint32_t oldLatency = mLatency;
+    mLatency = latency + (1000*mCblk->frameCount) / mCblk->sampleRate;
+    LOGV("new latency for output %d (old latency %d, new latency %d)", output, oldLatency, mLatency);
+
+    if (mCbf != NULL) {
+        mCbf(EVENT_LATENCY_CHANGED, mUserData, &mLatency);
+    }
 }
 
 // =========================================================================
