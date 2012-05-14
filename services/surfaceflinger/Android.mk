@@ -37,6 +37,9 @@ endif
 ifeq ($(BOARD_HAVE_CODEC_SUPPORT),SAMSUNG_CODEC_SUPPORT)
 	LOCAL_CFLAGS += -DSAMSUNG_CODEC_SUPPORT
 endif
+ifeq ($(BOARD_HAVE_HDMI_SUPPORT),SAMSUNG_HDMI_SUPPORT)
+	LOCAL_CFLAGS += -DSAMSUNG_HDMI_SUPPORT
+endif
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
@@ -48,6 +51,9 @@ LOCAL_SHARED_LIBRARIES := \
 	libui \
 	libgui
 
+ifeq ($(BOARD_HAVE_HDMI_SUPPORT),SAMSUNG_HDMI_SUPPORT)
+	LOCAL_SHARED_LIBRARIES += libfimc libhdmi
+endif
 # this is only needed for DDMS debugging
 LOCAL_SHARED_LIBRARIES += libdvm libandroid_runtime
 
