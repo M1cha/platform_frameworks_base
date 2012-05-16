@@ -85,6 +85,7 @@ class MediaPlayerService : public BnMediaPlayerService
                 uint32_t sampleRate, int channelCount,
                 int format, int bufferCount,
                 AudioCallback cb, void *cookie);
+
         virtual void            start();
         virtual ssize_t         write(const void* buffer, size_t size);
         virtual void            stop();

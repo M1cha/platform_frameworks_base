@@ -436,6 +436,7 @@ bool SurfaceFlinger::threadLoop()
 
         // inform the h/w that we're done compositing
         logger.log(GraphicLog::SF_COMPOSITION_COMPLETE, index);
+        hw.compositionComplete();
 
         logger.log(GraphicLog::SF_SWAP_BUFFERS, index);
         postFramebuffer();
@@ -443,6 +444,7 @@ bool SurfaceFlinger::threadLoop()
         logger.log(GraphicLog::SF_REPAINT_DONE, index);
     } else {
         // pretend we did the post
+        hw.compositionComplete();
         usleep(16667); // 60 fps period
     }
     return true;
@@ -814,6 +816,8 @@ void SurfaceFlinger::handleRepaint()
 
     // set the frame buffer
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 
     uint32_t flags = hw.getFlags();
     if ((flags & DisplayHardware::SWAP_RECTANGLE) ||
@@ -854,11 +858,8 @@ void SurfaceFlinger::handleRepaint()
     mDirtyRegion.clear();
 }
 
-static bool checkDrawingWithGL(hwc_layer_t* const layers, size_t layerCount);
-
 void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
 {
-    bool useGL = true;
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
     HWComposer& hwc(hw.getHwComposer());
     hwc_layer_t* const cur(hwc.getLayers());
@@ -889,22 +890,6 @@ void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
     const size_t fbLayerCount = hwc.getLayerCount(HWC_FRAMEBUFFER);
     status_t err = hwc.prepare();
     LOGE_IF(err, "HWComposer::prepare failed (%s)", strerror(-err));
-
-    /*
-     * Check if GL will be used
-     */
-    useGL = checkDrawingWithGL(cur, count);
-
-    if (!useGL) {
-        return;
-    }
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    if (UNLIKELY(!mWormholeRegion.isEmpty())) {
-        // should never happen unless the window manager has a bug
-        // draw something...
-        drawWormhole();
-    }
 
     if (err == NO_ERROR) {
         // what's happening here is tricky.
@@ -973,28 +958,20 @@ void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
     }
 }
 
-static bool checkDrawingWithGL(hwc_layer_t* const layers, size_t layerCount)
-{
-    bool useGL = false;
-    if (layers) {
-        for (size_t i=0 ; i<layerCount ; i++) {
-            if (layers[i].compositionType == HWC_FRAMEBUFFER) {
-                useGL = true;
-            }
-        }
-    }
-    return useGL;
-}
-
 void SurfaceFlinger::composeSurfaces(const Region& dirty)
 {
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
     HWComposer& hwc(hw.getHwComposer());
 
     const size_t fbLayerCount = hwc.getLayerCount(HWC_FRAMEBUFFER);
+    if (UNLIKELY(fbLayerCount && !mWormholeRegion.isEmpty())) {
+        // should never happen unless the window manager has a bug
+        // draw something...
+        drawWormhole();
+    }
 
     /*
-     * render the layers targeted at the framebuffer
+     * and then, render the layers targeted at the framebuffer
      */
     hwc_layer_t* const cur(hwc.getLayers());
     const Vector< sp<LayerBase> >& layers(mVisibleLayersSortedByZ);
@@ -1801,14 +1778,24 @@ status_t SurfaceFlinger::renderScreenToTextureLocked(DisplayID dpy,
     GLuint name, tname;
     glGenTextures(1, &tname);
     glBindTexture(GL_TEXTURE_2D, tname);
+#ifdef TARGET_BOARD_SNOWBALL
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
             hw_w, hw_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+#else
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+            hw_w, hw_h, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+#endif
     if (glGetError() != GL_NO_ERROR) {
         while ( glGetError() != GL_NO_ERROR ) ;
         GLint tw = (2 << (31 - clz(hw_w)));
         GLint th = (2 << (31 - clz(hw_h)));
+#ifdef TARGET_BOARD_SNOWBALL
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
                 tw, th, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+#else
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+                tw, th, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+#endif
         u = GLfloat(hw_w) / tw;
         v = GLfloat(hw_h) / th;
     }
@@ -2380,6 +2367,8 @@ status_t SurfaceFlinger::captureScreenImplLocked(DisplayID dpy,
     glDeleteRenderbuffersOES(1, &tname);
     glDeleteFramebuffersOES(1, &name);
 
+    hw.compositionComplete();
+
     // LOGD("screenshot: result = %s", result<0 ? strerror(result) : "OK");
 
     return result;
@@ -2597,9 +2586,9 @@ sp<GraphicBuffer> GraphicBufferAlloc::createGraphicBuffer(uint32_t w, uint32_t h
         if (err == NO_MEMORY) {
             GraphicBuffer::dumpAllocationsToSystemLog();
         }
-        LOGE("GraphicBufferAlloc::createGraphicBuffer(w=%d, h=%d, format=%#x) "
+        LOGE("GraphicBufferAlloc::createGraphicBuffer(w=%d, h=%d) "
              "failed (%s), handle=%p",
-                w, h, format, strerror(-err), graphicBuffer->handle);
+                w, h, strerror(-err), graphicBuffer->handle);
         return 0;
     }
     return graphicBuffer;

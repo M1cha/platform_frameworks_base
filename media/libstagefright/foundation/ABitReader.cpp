@@ -22,9 +22,7 @@ namespace android {
 
 ABitReader::ABitReader(const uint8_t *data, size_t size)
     : mData(data),
-      mOriginalData(data),
       mSize(size),
-      mOriginalSize(size),
       mReservoir(0),
       mNumBitsLeft(0) {
 }
@@ -78,19 +76,6 @@ void ABitReader::skipBits(size_t n) {
     if (n > 0) {
         getBits(n);
     }
-}
-
-void ABitReader::rewindBits(size_t n) {
-    CHECK_GE(mOriginalSize * 8 - numBitsLeft(), n);
-
-    size_t bitsLeft = numBitsLeft();
-
-    mData = mOriginalData;
-    mSize = mOriginalSize;
-    mReservoir = 0;
-    mNumBitsLeft = 0;
-
-    skipBits(mOriginalSize * 8 - bitsLeft - n);
 }
 
 void ABitReader::putBits(uint32_t x, size_t n) {

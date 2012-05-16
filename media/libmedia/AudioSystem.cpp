@@ -44,6 +44,7 @@ int AudioSystem::gPrevInFormat = AUDIO_FORMAT_PCM_16_BIT;
 int AudioSystem::gPrevInChannelCount = 1;
 size_t AudioSystem::gInBuffSize = 0;
 
+
 // establish binder interface to AudioFlinger service
 const sp<IAudioFlinger>& AudioSystem::get_audio_flinger()
 {
@@ -625,12 +626,11 @@ audio_io_handle_t AudioSystem::getInput(int inputSource,
                                     uint32_t format,
                                     uint32_t channels,
                                     audio_in_acoustics_t acoustics,
-                                    int sessionId,
-                                    audio_input_clients *inputClientId)
+                                    int sessionId)
 {
     const sp<IAudioPolicyService>& aps = AudioSystem::get_audio_policy_service();
     if (aps == 0) return 0;
-    return aps->getInput(inputSource, samplingRate, format, channels, acoustics, sessionId, inputClientId);
+    return aps->getInput(inputSource, samplingRate, format, channels, acoustics, sessionId);
 }
 
 status_t AudioSystem::startInput(audio_io_handle_t input)

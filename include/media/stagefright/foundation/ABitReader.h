@@ -31,8 +31,6 @@ struct ABitReader {
     uint32_t getBits(size_t n);
     void skipBits(size_t n);
 
-    void rewindBits(size_t n);
-
     void putBits(uint32_t x, size_t n);
 
     size_t numBitsLeft() const;
@@ -41,9 +39,7 @@ struct ABitReader {
 
 private:
     const uint8_t *mData;
-    const uint8_t *mOriginalData;
     size_t mSize;
-    size_t mOriginalSize;
 
     uint32_t mReservoir;  // left-aligned bits
     size_t mNumBitsLeft;

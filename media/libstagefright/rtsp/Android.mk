@@ -2,10 +2,6 @@ LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
 
-ifeq ($(BOARD_HAVE_CODEC_SUPPORT),STERICSSON_CODEC_SUPPORT)
-        LOCAL_CFLAGS += -DSTERICSSON_CODEC_SUPPORT
-endif
-
 LOCAL_SRC_FILES:=       \
         AAMRAssembler.cpp           \
         AAVCAssembler.cpp           \
@@ -38,10 +34,6 @@ include $(BUILD_STATIC_LIBRARY)
 ################################################################################
 
 include $(CLEAR_VARS)
-
-ifeq ($(BOARD_HAVE_CODEC_SUPPORT),STERICSSON_CODEC_SUPPORT)
-        LOCAL_CFLAGS += -DSTERICSSON_CODEC_SUPPORT
-endif
 
 LOCAL_SRC_FILES:=         \
         rtp_test.cpp

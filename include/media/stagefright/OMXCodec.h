@@ -140,7 +140,6 @@ private:
         kAvoidMemcopyInputRecordingFrames     = 2048,
         kRequiresLargerEncoderOutputBuffer    = 4096,
         kOutputBuffersAreUnreadable           = 8192,
-        kRequiresStoreMetaDataBeforeIdle      = 16384,
     };
 
     enum BufferStatus {
