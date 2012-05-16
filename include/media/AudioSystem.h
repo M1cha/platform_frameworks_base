@@ -30,8 +30,7 @@
 namespace android {
 
 typedef void (*audio_error_callback)(status_t err);
-typedef void (*latency_update_callback)(void *cookie, audio_io_handle_t output, uint32_t sinkLatency);
-
+typedef void (*latency_update_callback)(void *cookie, audio_io_handle_t output, uint32_t latency);
 class IAudioPolicyService;
 class String8;
 
@@ -111,8 +110,7 @@ public:
     static int newAudioSessionId();
     static void acquireAudioSessionId(int audioSession);
     static void releaseAudioSessionId(int audioSession);
-
-    static int registerLatencyNotificationClient(latency_update_callback cb, void *cookie, audio_io_handle_t output);
+    static int registerLatencyNotificationClient(latency_update_callback cb, void *cookie);
     static void unregisterLatencyNotificationClient(int clientId);
 
     // types of io configuration change events received with ioConfigChanged()
@@ -124,7 +122,6 @@ public:
         INPUT_CLOSED,
         INPUT_CONFIG_CHANGED,
         STREAM_CONFIG_CHANGED,
-        SINK_LATENCY_CHANGED,
         NUM_CONFIG_EVENTS
     };
 
@@ -229,8 +226,7 @@ private:
 
     struct NotificationClient : public RefBase {
         latency_update_callback mCb;
-        void *mCookie;
-        audio_io_handle_t mOutput;
+        void * mCookie;
     };
 
     static sp<AudioFlingerClient> gAudioFlingerClient;
@@ -255,7 +251,6 @@ private:
     // list of output descriptors containing cached parameters
     // (sampling rate, framecount, channel count...)
     static DefaultKeyedVector<audio_io_handle_t, OutputDescriptor *> gOutputs;
-
     static Mutex gLatencyLock;
     static int gNextUniqueLatencyId;
     static DefaultKeyedVector<int, sp<AudioSystem::NotificationClient> > gLatencyNotificationClients;

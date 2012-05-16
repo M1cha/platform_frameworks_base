@@ -261,10 +261,7 @@ void AudioPlayer::LatencyCallback(uint32_t latency, void *cookie) {
     AudioPlayer *me = (AudioPlayer *)cookie;
     int64_t oldLatency = me->mLatencyUs;
     me->mLatencyUs = (int64_t)latency * 1000;
-    if (oldLatency != me->mLatencyUs) {
-        LOGI("Audio output latency updated from %lldus to %lldus",
-            oldLatency, me->mLatencyUs);
-    }
+    LOGI("Audio output latency updated from %lldus to %lldus", oldLatency, me->mLatencyUs);
 }
 
 bool AudioPlayer::isSeeking() {
@@ -291,18 +288,15 @@ size_t AudioPlayer::AudioSinkCallback(
 
 void AudioPlayer::AudioCallback(int event, void *info) {
     if (event == AudioTrack::EVENT_MORE_DATA) {
-        AudioTrack::Buffer *buffer = (AudioTrack::Buffer *)info;
-        size_t numBytesWritten = fillBuffer(buffer->raw, buffer->size);
+    AudioTrack::Buffer *buffer = (AudioTrack::Buffer *)info;
+    size_t numBytesWritten = fillBuffer(buffer->raw, buffer->size);
 
-        buffer->size = numBytesWritten;
+    buffer->size = numBytesWritten;
     } else if (event == AudioTrack::EVENT_LATENCY_CHANGED) {
         uint32_t *newLatency = (uint32_t *)info;
         int64_t oldLatency = mLatencyUs;
         mLatencyUs = (int64_t)*newLatency * 1000;
-        if (oldLatency != mLatencyUs) {
-            LOGI("Audio output latency updated from %lldus to %lldus",
-                oldLatency, mLatencyUs);
-        }
+        LOGI("Audio output latency updated from %lldus to %lldus", oldLatency, mLatencyUs);
     }
 }
 

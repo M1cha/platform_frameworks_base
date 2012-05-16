@@ -56,7 +56,7 @@ public:
         EVENT_MARKER = 3,           // Playback head is at the specified marker position (See setMarkerPosition()).
         EVENT_NEW_POS = 4,          // Playback head is at a new position (See setPositionUpdatePeriod()).
         EVENT_BUFFER_END = 5,       // Playback head is at the end of the buffer.
-        EVENT_LATENCY_CHANGED = 6   // Audio sink latency has changed.
+        EVENT_LATENCY_CHANGED = 6   // Audio output has been reconfigured and latency has changed.
     };
 
     /* Create Buffer on the stack and pass it to obtainBuffer()
@@ -452,9 +452,8 @@ private:
             status_t setLoop_l(uint32_t loopStart, uint32_t loopEnd, int loopCount);
             audio_io_handle_t getOutput_l();
             status_t restoreTrack_l(audio_track_cblk_t*& cblk, bool fromStart);
-
-            static void LatencyCallback(void *cookie, audio_io_handle_t output,
-                                 uint32_t sinkLatency);
+    static void LatencyCallbackWrapper(void *cookie, audio_io_handle_t output, uint32_t latency);
+    void latencyCallback(audio_io_handle_t output, uint32_t latency);
 
     sp<IAudioTrack>         mAudioTrack;
     sp<IMemory>             mCblkMemory;

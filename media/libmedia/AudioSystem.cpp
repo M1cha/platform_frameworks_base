@@ -374,14 +374,12 @@ void AudioSystem::releaseAudioSessionId(int audioSession) {
     }
 }
 
-int AudioSystem::registerLatencyNotificationClient(latency_update_callback cb,
-        void *cookie, audio_io_handle_t output) {
+int AudioSystem::registerLatencyNotificationClient(latency_update_callback cb, void *cookie) {
     Mutex::Autolock _l(gLatencyLock);
 
     sp<NotificationClient> notificationClient = new NotificationClient();
     notificationClient->mCb = cb;
     notificationClient->mCookie = cookie;
-    notificationClient->mOutput = output;
 
     gNextUniqueLatencyId++;
     gLatencyNotificationClients.add(gNextUniqueLatencyId, notificationClient);
@@ -392,7 +390,6 @@ void AudioSystem::unregisterLatencyNotificationClient(int clientId) {
     Mutex::Autolock _l(gLatencyLock);
     gLatencyNotificationClients.removeItem(clientId);
 }
-
 // ---------------------------------------------------------------------------
 
 void AudioSystem::AudioFlingerClient::binderDied(const wp<IBinder>& who) {
@@ -472,20 +469,20 @@ void AudioSystem::AudioFlingerClient::ioConfigChanged(int event, int ioHandle, v
                 ioHandle, desc->samplingRate, desc->format,
                 desc->channels, desc->frameCount, desc->latency);
         OutputDescriptor *outputDesc = gOutputs.valueAt(index);
+        uint32_t oldLatency = outputDesc->latency;
         delete outputDesc;
         outputDesc =  new OutputDescriptor(*desc);
         gOutputs.replaceValueFor(ioHandle, outputDesc);
-    } break;
-    case SINK_LATENCY_CHANGED: {
-        int sinkLatency = *((int*)param2);
+        if (oldLatency == outputDesc->latency) {
+            break;
+        }
+        uint32_t newLatency = outputDesc->latency;
         gLock.unlock();
         gLatencyLock.lock();
         size_t size = gLatencyNotificationClients.size();
         for (size_t i = 0; i < size; i++) {
             sp<NotificationClient> client = gLatencyNotificationClients.valueAt(i);
-            if (client->mOutput == ioHandle) {
-                (*client->mCb)(client->mCookie, ioHandle, sinkLatency);
-            }
+            (*client->mCb)(client->mCookie, ioHandle, newLatency);
         }
         gLatencyLock.unlock();
         gLock.lock();
