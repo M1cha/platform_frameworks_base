@@ -1343,11 +1343,10 @@ status_t MediaPlayerService::AudioOutput::getPosition(uint32_t *position)
 
 status_t MediaPlayerService::AudioOutput::open(
         uint32_t sampleRate, int channelCount, int format, int bufferCount,
-        AudioCallback cb, void *cookie, LatencyCallback latencyCb)
+        AudioCallback cb, void *cookie)
 {
     mCallback = cb;
     mCallbackCookie = cookie;
-    mLatencyCallback = latencyCb;
 
     // Check argument "bufferCount" against the mininum buffer count
     if (bufferCount < mMinBufferCount) {
@@ -1496,31 +1495,25 @@ status_t MediaPlayerService::AudioOutput::attachAuxEffect(int effectId)
 void MediaPlayerService::AudioOutput::CallbackWrapper(
         int event, void *cookie, void *info) {
     //LOGV("callbackwrapper");
-    if (event == AudioTrack::EVENT_MORE_DATA) {
-        AudioOutput *me = (AudioOutput *)cookie;
-        AudioTrack::Buffer *buffer = (AudioTrack::Buffer *)info;
-
-        size_t actualSize = (*me->mCallback)(
-                me, buffer->raw, buffer->size, me->mCallbackCookie);
-
-        if (actualSize == 0 && buffer->size > 0) {
-            // We've reached EOS but the audio track is not stopped yet,
-            // keep playing silence.
-
-            memset(buffer->raw, 0, buffer->size);
-            actualSize = buffer->size;
-        }
-
-        buffer->size = actualSize;
-    } else if (event == AudioTrack::EVENT_LATENCY_CHANGED) {
-        AudioOutput *me = (AudioOutput *)cookie;
-
-        uint32_t *newLatency = (uint32_t *)info;
-        me->mLatency = *newLatency;
-        if (me->mLatencyCallback != NULL) {
-            (*me->mLatencyCallback)(*newLatency, me->mCallbackCookie);
-        }
+    if (event != AudioTrack::EVENT_MORE_DATA) {
+        return;
     }
+
+    AudioOutput *me = (AudioOutput *)cookie;
+    AudioTrack::Buffer *buffer = (AudioTrack::Buffer *)info;
+
+    size_t actualSize = (*me->mCallback)(
+           me, buffer->raw, buffer->size, me->mCallbackCookie);
+
+    if (actualSize == 0 && buffer->size > 0) {
+        // We've reached EOS but the audio track is not stopped yet,
+        // keep playing silence.
+
+        memset(buffer->raw, 0, buffer->size);
+        actualSize = buffer->size;
+    }
+
+    buffer->size = actualSize;
 }
 
 int MediaPlayerService::AudioOutput::getSessionId()
@@ -1621,7 +1614,7 @@ bool CallbackThread::threadLoop() {
 
 status_t MediaPlayerService::AudioCache::open(
         uint32_t sampleRate, int channelCount, int format, int bufferCount,
-        AudioCallback cb, void *cookie, LatencyCallback latencyCb)
+        AudioCallback cb, void *cookie)
 {
     LOGV("open(%u, %d, %d, %d)", sampleRate, channelCount, format, bufferCount);
     if (mHeap->getHeapID() < 0) {

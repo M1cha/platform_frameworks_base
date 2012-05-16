@@ -29,7 +29,6 @@ const char *AudioParameter::keyFormat = "format";
 const char *AudioParameter::keyChannels = "channels";
 const char *AudioParameter::keyFrameCount = "frame_count";
 const char *AudioParameter::keyInputSource = "input_source";
-const char *AudioParameter::keyLatency = "latency";
 
 AudioParameter::AudioParameter(const String8& keyValuePairs)
 {
