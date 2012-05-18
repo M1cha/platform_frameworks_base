@@ -35,6 +35,9 @@ ifeq ($(TARGET_BOARD_PLATFORM), s5pc110)
 	LOCAL_CFLAGS += -DREFRESH_RATE=56
 endif
 
+ifeq ($(BOARD_HAVE_HDMI_SUPPORT),SAMSUNG_HDMI_SUPPORT)
+	LOCAL_CFLAGS += -DSAMSUNG_HDMI_SUPPORT
+endif
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
@@ -53,6 +56,12 @@ LOCAL_C_INCLUDES := \
 	$(call include-path-for, corecg graphics)
 
 LOCAL_C_INCLUDES += hardware/libhardware/modules/gralloc
+
+ifeq ($(BOARD_HAVE_HDMI_SUPPORT),SAMSUNG_HDMI_SUPPORT)
+        LOCAL_C_INCLUDES += vendor/samsung/origen/proprietary/include
+        LOCAL_LDFLAGS += vendor/samsung/origen/proprietary/system/lib/libfimc.so
+        LOCAL_LDFLAGS += vendor/samsung/origen/proprietary/system/lib/libhdmi.so
+endif
 
 LOCAL_MODULE:= libsurfaceflinger
 
