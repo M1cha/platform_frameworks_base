@@ -51,14 +51,17 @@ LOCAL_SHARED_LIBRARIES := \
 	libui \
 	libgui
 
-ifeq ($(BOARD_HAVE_HDMI_SUPPORT),SAMSUNG_HDMI_SUPPORT)
-	LOCAL_SHARED_LIBRARIES += libfimc libhdmi
-endif
 # this is only needed for DDMS debugging
 LOCAL_SHARED_LIBRARIES += libdvm libandroid_runtime
 
 LOCAL_C_INCLUDES := \
 	$(call include-path-for, corecg graphics)
+
+ifeq ($(BOARD_HAVE_HDMI_SUPPORT),SAMSUNG_HDMI_SUPPORT)
+        LOCAL_C_INCLUDES += vendor/samsung/origen/proprietary/include
+        LOCAL_LDFLAGS += vendor/samsung/origen/proprietary/system/lib/libfimc.so
+        LOCAL_LDFLAGS += vendor/samsung/origen/proprietary/system/lib/libhdmi.so
+endif
 
 LOCAL_C_INCLUDES += hardware/libhardware/modules/gralloc
 
