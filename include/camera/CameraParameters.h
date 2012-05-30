@@ -595,6 +595,21 @@ public:
 
     // Pixel color formats for KEY_PREVIEW_FORMAT, KEY_PICTURE_FORMAT,
     // and KEY_VIDEO_FRAME_FORMAT
+#ifdef STERICSSON_CODEC_SUPPORT
+    static const char PIXEL_FORMAT_YUV422SP[];
+    static const char PIXEL_FORMAT_YUV420P[]; // YV12
+    static const char PIXEL_FORMAT_YUV420SP[]; // NV21
+    static const char PIXEL_FORMAT_YUV420SPNV12[]; // NV12
+    static const char PIXEL_FORMAT_YUV422I[]; // YUY2
+    static const char PIXEL_FORMAT_YVU422SP[];
+    static const char PIXEL_FORMAT_YVU422P[];
+    static const char PIXEL_FORMAT_YVU420SP[];
+    static const char PIXEL_FORMAT_YVU420P[];
+    static const char PIXEL_FORMAT_YUV420MB[];
+    static const char PIXEL_FORMAT_RGB565[];
+    static const char PIXEL_FORMAT_RGBA8888[];
+    static const char PIXEL_FORMAT_JPEG[];
+#else
     static const char PIXEL_FORMAT_YUV422SP[];
     static const char PIXEL_FORMAT_YUV420SP[]; // NV21
     static const char PIXEL_FORMAT_YUV422I[]; // YUY2
@@ -602,6 +617,7 @@ public:
     static const char PIXEL_FORMAT_RGB565[];
     static const char PIXEL_FORMAT_RGBA8888[];
     static const char PIXEL_FORMAT_JPEG[];
+#endif
     // Raw bayer format used for images, which is 10 bit precision samples
     // stored in 16 bit words. The filter pattern is RGGB.
     static const char PIXEL_FORMAT_BAYER_RGGB[];

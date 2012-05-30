@@ -110,7 +110,11 @@ static int32_t getColorFormat(const char* colorFormat) {
     if (!strcmp(colorFormat, "OMX_TI_COLOR_FormatYUV420PackedSemiPlanar")) {
        return OMX_TI_COLOR_FormatYUV420PackedSemiPlanar;
     }
-
+#ifdef STERICSSON_CODEC_SUPPORT
+    if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV420MB)) {
+       return OMX_STE_COLOR_FormatYUV420PackedSemiPlanarMB;
+    }
+#endif
     LOGE("Uknown color format (%s), please add it to "
          "CameraSource::getColorFormat", colorFormat);
 

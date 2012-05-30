@@ -474,15 +474,18 @@ bool SurfaceFlinger::threadLoop()
 
         // inform the h/w that we're done compositing
         logger.log(GraphicLog::SF_COMPOSITION_COMPLETE, index);
+#ifdef STERICSSON_CODEC_SUPPORT
         hw.compositionComplete();
-
+#endif
         logger.log(GraphicLog::SF_SWAP_BUFFERS, index);
         postFramebuffer();
 
         logger.log(GraphicLog::SF_REPAINT_DONE, index);
     } else {
         // pretend we did the post
+#ifdef STERICSSON_CODEC_SUPPORT
         hw.compositionComplete();
+#endif
         usleep(16667); // 60 fps period
     }
     return true;
@@ -2463,9 +2466,9 @@ status_t SurfaceFlinger::captureScreenImplLocked(DisplayID dpy,
     glBindFramebufferOES(GL_FRAMEBUFFER_OES, 0);
     glDeleteRenderbuffersOES(1, &tname);
     glDeleteFramebuffersOES(1, &name);
-
+#ifndef STERICSSON_CODEC_SUPPORT
     hw.compositionComplete();
-
+#endif
     // LOGD("screenshot: result = %s", result<0 ? strerror(result) : "OK");
 
     return result;

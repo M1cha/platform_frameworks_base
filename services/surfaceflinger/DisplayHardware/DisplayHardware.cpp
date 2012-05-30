@@ -379,6 +379,10 @@ void DisplayHardware::flip(const Region& dirty) const
     if (mHwc->initCheck() == NO_ERROR) {
         mHwc->commit();
     } else {
+#ifdef STERICSSON_CODEC_SUPPORT
+        // Make sure the swapbuffer call is done in sync
+        mNativeWindow->compositionComplete();
+#endif
         eglSwapBuffers(dpy, surface);
     }
     checkEGLErrors("eglSwapBuffers");
