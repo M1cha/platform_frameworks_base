@@ -569,7 +569,7 @@ public class ProcessStats {
             while (st.hasMoreElements()) {
                 String token = st.nextToken();
                 try {
-                    if (out.length == 0) {
+                    if (out != null && out.length == 0) {
                         tempTimes = new long[MAX_SPEEDS];
                         tempSpeeds = new long[MAX_SPEEDS];
                     }
