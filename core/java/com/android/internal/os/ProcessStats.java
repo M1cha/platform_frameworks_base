@@ -557,7 +557,7 @@ public class ProcessStats {
         long[] tempTimes = out;
         long[] tempSpeeds = mCpuSpeeds;
         final int MAX_SPEEDS = 20;
-        if (out == null) {
+        if (out == null || out.length == 0) {
             tempTimes = new long[MAX_SPEEDS]; // Hopefully no more than that
             tempSpeeds = new long[MAX_SPEEDS];
         }
@@ -569,10 +569,6 @@ public class ProcessStats {
             while (st.hasMoreElements()) {
                 String token = st.nextToken();
                 try {
-                    if (out != null && out.length == 0) {
-                        tempTimes = new long[MAX_SPEEDS];
-                        tempSpeeds = new long[MAX_SPEEDS];
-                    }
                     long val = Long.parseLong(token);
                     tempSpeeds[speed] = val;
                     token = st.nextToken();
