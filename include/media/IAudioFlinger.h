@@ -126,8 +126,14 @@ public:
                                     uint32_t *pSamplingRate,
                                     uint32_t *pFormat,
                                     uint32_t *pChannels,
+#ifdef STERICSSON_CODEC_SUPPORT
+                                    uint32_t acoustics,
+                                    uint32_t *pInputClientId = NULL) = 0;
+    virtual status_t closeInput(int input, uint32_t* inputClientId = NULL) = 0;
+#else
                                     uint32_t acoustics) = 0;
     virtual status_t closeInput(int input) = 0;
+#endif
 
     virtual status_t setStreamOutput(uint32_t stream, int output) = 0;
 
@@ -159,6 +165,9 @@ public:
                                     int *enabled) = 0;
 
     virtual status_t moveEffects(int session, int srcOutput, int dstOutput) = 0;
+#ifdef STERICSSON_CODEC_SUPPORT
+    virtual size_t readInput(uint32_t *input, uint32_t inputClientId, void *buffer, uint32_t bytes, uint32_t *pOverwrittenBytes) = 0;
+#endif
 };
 
 

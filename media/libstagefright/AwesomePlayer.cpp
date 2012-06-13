@@ -40,6 +40,9 @@
 #include <media/stagefright/AudioPlayer.h>
 #include <media/stagefright/DataSource.h>
 #include <media/stagefright/FileSource.h>
+#ifdef STERICSSON_CODEC_SUPPORT
+#include <media/stagefright/FMRadioDataSource.h>
+#endif
 #include <media/stagefright/MediaBuffer.h>
 #include <media/stagefright/MediaDefs.h>
 #include <media/stagefright/MediaExtractor.h>
@@ -1943,6 +1946,9 @@ status_t AwesomePlayer::prepareAsync_l() {
 status_t AwesomePlayer::finishSetDataSource_l() {
     sp<DataSource> dataSource;
 
+#ifdef STERICSSON_CODEC_SUPPORT
+    char *mime = NULL;
+#endif
     bool isWidevineStreaming = false;
     if (!strncasecmp("widevine://", mUri.string(), 11)) {
         isWidevineStreaming = true;
@@ -2080,6 +2086,17 @@ status_t AwesomePlayer::finishSetDataSource_l() {
                 LOGI("Prepare cancelled while waiting for initial cache fill.");
                 return UNKNOWN_ERROR;
             }
+#ifdef STERICSSON_CODEC_SUPPORT
+        }
+    } else if (!strncasecmp("fmradio://rx", mUri.string(), 12)) {
+
+        mime = (char*) MEDIA_MIMETYPE_AUDIO_RAW;
+        // HACK: Removed the line below since it causes problems. Add it back if you want FM-Radio.
+        //dataSource = new FMRadioDataSource();
+        status_t err = dataSource->initCheck();
+        if (err != OK) {
+            return err;
+#endif
         }
     } else {
         dataSource = DataSource::CreateFromURI(mUri.string(), &mUriHeaders);
@@ -2107,8 +2124,12 @@ status_t AwesomePlayer::finishSetDataSource_l() {
         mWVMExtractor->setAdaptiveStreamingMode(true);
         extractor = mWVMExtractor;
     } else {
+#ifdef STERICSSON_CODEC_SUPPORT
+        extractor = MediaExtractor::Create(dataSource, mime);
+#else
         extractor = MediaExtractor::Create(
                 dataSource, sniffedMIME.empty() ? NULL : sniffedMIME.c_str());
+#endif
 
         if (extractor == NULL) {
             return UNKNOWN_ERROR;

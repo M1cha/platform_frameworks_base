@@ -24,6 +24,9 @@
 #include "include/WAVExtractor.h"
 #include "include/OggExtractor.h"
 #include "include/MPEG2PSExtractor.h"
+#ifdef STERICSSON_CODEC_SUPPORT
+#include "include/PCMExtractor.h"
+#endif
 #include "include/MPEG2TSExtractor.h"
 #include "include/DRMExtractor.h"
 #include "include/WVMExtractor.h"
@@ -115,6 +118,10 @@ sp<MediaExtractor> MediaExtractor::Create(
         ret = new AACExtractor(source);
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG2PS)) {
         ret = new MPEG2PSExtractor(source);
+#ifdef STERICSSON_CODEC_SUPPORT
+    } else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW)) {
+        ret = new PCMExtractor(source);
+#endif
     }
 
     if (ret != NULL) {

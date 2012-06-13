@@ -69,7 +69,12 @@ enum {
     QUERY_EFFECT,
     GET_EFFECT_DESCRIPTOR,
     CREATE_EFFECT,
+#ifdef STERICSSON_CODEC_SUPPORT
+    MOVE_EFFECTS,
+    READ_INPUT
+#else
     MOVE_EFFECTS
+#endif
 };
 
 class BpAudioFlinger : public BpInterface<IAudioFlinger>
@@ -432,7 +437,12 @@ public:
                             uint32_t *pSamplingRate,
                             uint32_t *pFormat,
                             uint32_t *pChannels,
+#ifdef STERICSSON_CODEC_SUPPORT
+                            uint32_t acoustics,
+                            uint32_t *pInputClientId)
+#else
                             uint32_t acoustics)
+#endif
     {
         Parcel data, reply;
         uint32_t devices = pDevices ? *pDevices : 0;
@@ -446,6 +456,9 @@ public:
         data.writeInt32(format);
         data.writeInt32(channels);
         data.writeInt32(acoustics);
+#ifdef STERICSSON_CODEC_SUPPORT
+        data.writeIntPtr((intptr_t)pInputClientId);
+#endif
         remote()->transact(OPEN_INPUT, data, &reply);
         int input = reply.readInt32();
         devices = reply.readInt32();
@@ -459,11 +472,18 @@ public:
         return input;
     }
 
+#ifdef STERICSSON_CODEC_SUPPORT
+    virtual status_t closeInput(int input, uint32_t *inputClientId)
+#else
     virtual status_t closeInput(int input)
+#endif
     {
         Parcel data, reply;
         data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
         data.writeInt32(input);
+#ifdef STERICSSON_CODEC_SUPPORT
+        data.writeIntPtr((intptr_t) inputClientId);
+#endif
         remote()->transact(CLOSE_INPUT, data, &reply);
         return reply.readInt32();
     }
@@ -515,6 +535,22 @@ public:
         remote()->transact(GET_INPUT_FRAMES_LOST, data, &reply);
         return reply.readInt32();
     }
+
+#ifdef STERICSSON_CODEC_SUPPORT
+    virtual size_t readInput(uint32_t *input, uint32_t inputClientId, void *buffer, uint32_t bytes, uint32_t *pOverwrittenBytes)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeIntPtr((intptr_t) input);
+        data.writeInt32(inputClientId);
+        data.writeIntPtr((intptr_t) buffer);
+        data.writeInt32(bytes);
+        data.writeIntPtr((intptr_t) pOverwrittenBytes);
+        remote()->transact(READ_INPUT, data, &reply);
+
+        return reply.readInt32();
+    }
+#endif
 
     virtual int newAudioSessionId()
     {
@@ -882,12 +918,20 @@ status_t BnAudioFlinger::onTransact(
             uint32_t format = data.readInt32();
             uint32_t channels = data.readInt32();
             uint32_t acoutics = data.readInt32();
+#ifdef STERICSSON_CODEC_SUPPORT
+            uint32_t *inputClientId = (uint32_t*) data.readIntPtr();
+#endif
 
             int input = openInput(&devices,
                                      &samplingRate,
                                      &format,
                                      &channels,
+#ifdef STERICSSON_CODEC_SUPPORT
+                                     acoutics,
+                                     inputClientId);
+#else
                                      acoutics);
+#endif
             reply->writeInt32(input);
             reply->writeInt32(devices);
             reply->writeInt32(samplingRate);
@@ -897,7 +941,13 @@ status_t BnAudioFlinger::onTransact(
         } break;
         case CLOSE_INPUT: {
             CHECK_INTERFACE(IAudioFlinger, data, reply);
+#ifdef STERICSSON_CODEC_SUPPORT
+            uint32_t input = data.readInt32();
+            uint32_t *inputClientId = (uint32_t*) data.readIntPtr();
+            reply->writeInt32(closeInput(input, inputClientId));
+#else
             reply->writeInt32(closeInput(data.readInt32()));
+#endif
             return NO_ERROR;
         } break;
         case SET_STREAM_OUTPUT: {
@@ -1010,6 +1060,18 @@ status_t BnAudioFlinger::onTransact(
             reply->writeInt32(moveEffects(session, srcOutput, dstOutput));
             return NO_ERROR;
         } break;
+#ifdef STERICSSON_CODEC_SUPPORT
+        case READ_INPUT: {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            uint32_t* input = (uint32_t*) data.readIntPtr();
+            uint32_t inputClientId = data.readInt32();
+            void* buffer = (void*) data.readIntPtr();
+            uint32_t bytes = data.readInt32();
+            uint32_t *pOverwrittenBytes = (uint32_t*) data.readIntPtr();
+            reply->writeInt32(readInput(input, inputClientId, buffer, bytes, pOverwrittenBytes));
+            return NO_ERROR;
+        } break;
+#endif
         default:
             return BBinder::onTransact(code, data, reply, flags);
     }

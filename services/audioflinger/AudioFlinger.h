@@ -137,9 +137,20 @@ public:
                             uint32_t *pSamplingRate,
                             uint32_t *pFormat,
                             uint32_t *pChannels,
+#ifdef STERICSSON_CODEC_SUPPORT
+                            uint32_t acoustics,
+                            uint32_t *pInputClientId = NULL);
+#else
                             uint32_t acoustics);
+#endif
 
+#ifdef STERICSSON_CODEC_SUPPORT
+    virtual status_t closeInput(int input, uint32_t *inputClientId = NULL);
+
+    virtual size_t readInput(uint32_t *input, uint32_t inputClientId, void *buffer, uint32_t bytes, uint32_t *pOverwrittenBytes);
+#else
     virtual status_t closeInput(int input);
+#endif
 
     virtual status_t setStreamOutput(uint32_t stream, int output);
 
@@ -1390,6 +1401,9 @@ private:
 
                 mutable     Mutex                   mHardwareLock;
                 audio_hw_device_t*                  mPrimaryHardwareDev;
+#ifdef STERICSSON_CODEC_SUPPORT
+                AudioStreamIn*                      mInputFMStream;
+#endif
                 Vector<audio_hw_device_t*>          mAudioHwDevs;
     mutable     int                                 mHardwareStatus;
 

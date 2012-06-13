@@ -20,6 +20,9 @@
 #include "include/WAVExtractor.h"
 #include "include/OggExtractor.h"
 #include "include/MPEG2PSExtractor.h"
+#ifdef STERICSSON_CODEC_SUPPORT
+#include "include/PCMExtractor.h"
+#endif
 #include "include/MPEG2TSExtractor.h"
 #include "include/NuCachedSource2.h"
 #include "include/HTTPBase.h"
@@ -32,6 +35,9 @@
 #include <media/stagefright/foundation/AMessage.h>
 #include <media/stagefright/DataSource.h>
 #include <media/stagefright/FileSource.h>
+#ifdef STERICSSON_CODEC_SUPPORT
+#include <media/stagefright/FMRadioDataSource.h>
+#endif
 #include <media/stagefright/MediaErrors.h>
 #include <utils/String8.h>
 

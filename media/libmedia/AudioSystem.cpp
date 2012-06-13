@@ -626,11 +626,20 @@ audio_io_handle_t AudioSystem::getInput(int inputSource,
                                     uint32_t format,
                                     uint32_t channels,
                                     audio_in_acoustics_t acoustics,
+#ifdef STERICSSON_CODEC_SUPPORT
+                                    int sessionId,
+                                    audio_input_clients *inputClientId)
+#else
                                     int sessionId)
+#endif
 {
     const sp<IAudioPolicyService>& aps = AudioSystem::get_audio_policy_service();
     if (aps == 0) return 0;
+#ifdef STERICSSON_CODEC_SUPPORT
+    return aps->getInput(inputSource, samplingRate, format, channels, acoustics, sessionId, inputClientId);
+#else
     return aps->getInput(inputSource, samplingRate, format, channels, acoustics, sessionId);
+#endif
 }
 
 status_t AudioSystem::startInput(audio_io_handle_t input)
