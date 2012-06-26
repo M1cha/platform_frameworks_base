@@ -84,7 +84,12 @@ class MediaPlayerService : public BnMediaPlayerService
         virtual status_t        open(
                 uint32_t sampleRate, int channelCount,
                 int format, int bufferCount,
+#ifdef STERICSSON_CODEC_SUPPORT
+                AudioCallback cb, void *cookie,
+                LatencyCallback latencyCb = NULL);
+#else
                 AudioCallback cb, void *cookie);
+#endif
 
         virtual void            start();
         virtual ssize_t         write(const void* buffer, size_t size);
@@ -108,6 +113,9 @@ class MediaPlayerService : public BnMediaPlayerService
         AudioTrack*             mTrack;
         AudioCallback           mCallback;
         void *                  mCallbackCookie;
+#ifdef STERICSSON_CODEC_SUPPORT
+        LatencyCallback         mLatencyCallback;
+#endif
         int                     mStreamType;
         float                   mLeftVolume;
         float                   mRightVolume;
@@ -140,7 +148,12 @@ class MediaPlayerService : public BnMediaPlayerService
         virtual status_t        open(
                 uint32_t sampleRate, int channelCount, int format,
                 int bufferCount = 1,
+#ifdef STERICSSON_CODEC_SUPPORT
+                AudioCallback cb = NULL, void *cookie = NULL,
+                LatencyCallback latencyCb = NULL);
+#else
                 AudioCallback cb = NULL, void *cookie = NULL);
+#endif
 
         virtual void            start();
         virtual ssize_t         write(const void* buffer, size_t size);

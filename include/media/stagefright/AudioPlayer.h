@@ -102,6 +102,10 @@ private:
             MediaPlayerBase::AudioSink *audioSink,
             void *data, size_t size, void *me);
 
+#ifdef STERICSSON_CODEC_SUPPORT
+    static void LatencyCallback(uint32_t latency, void *cookie);
+#endif
+
     size_t fillBuffer(void *data, size_t size);
 
     int64_t getRealTimeUsLocked() const;

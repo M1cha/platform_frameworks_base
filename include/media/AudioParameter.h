@@ -46,6 +46,9 @@ public:
     static const char *keyChannels;
     static const char *keyFrameCount;
     static const char *keyInputSource;
+#ifdef STERICSSON_CODEC_SUPPORT
+    static const char *keyLatency;
+#endif
 
     String8 toString();
 

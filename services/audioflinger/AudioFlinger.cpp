@@ -1716,6 +1716,9 @@ void AudioFlinger::PlaybackThread::audioConfigChanged_l(int event, int param) {
         break;
 
     case AudioSystem::STREAM_CONFIG_CHANGED:
+#ifdef STERICSSON_CODEC_SUPPORT
+    case AudioSystem::SINK_LATENCY_CHANGED:
+#endif
         param2 = &param;
     case AudioSystem::OUTPUT_CLOSED:
     default:
@@ -2414,6 +2417,11 @@ bool AudioFlinger::MixerThread::checkForNewParameters_l()
                 mEffectChains[i]->setDevice_l(mDevice);
             }
         }
+#ifdef STERICSSON_CODEC_SUPPORT
+        if (param.getInt(String8(AudioParameter::keyLatency), value) == NO_ERROR) {
+            sendConfigEvent_l(AudioSystem::SINK_LATENCY_CHANGED, value);
+        }
+#endif
 
         if (status == NO_ERROR) {
             status = mOutput->stream->common.set_parameters(&mOutput->stream->common,

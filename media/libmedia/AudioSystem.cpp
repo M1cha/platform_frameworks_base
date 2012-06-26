@@ -44,6 +44,12 @@ int AudioSystem::gPrevInFormat = AUDIO_FORMAT_PCM_16_BIT;
 int AudioSystem::gPrevInChannelCount = 1;
 size_t AudioSystem::gInBuffSize = 0;
 
+#ifdef STERICSSON_CODEC_SUPPORT
+// Clients for receiving latency update notifications
+Mutex AudioSystem::gLatencyLock;
+int AudioSystem::gNextUniqueLatencyId = 0;
+DefaultKeyedVector<int, sp<AudioSystem::NotificationClient> > AudioSystem::gLatencyNotificationClients(0);
+#endif
 
 // establish binder interface to AudioFlinger service
 const sp<IAudioFlinger>& AudioSystem::get_audio_flinger()
@@ -370,9 +376,36 @@ void AudioSystem::releaseAudioSessionId(int audioSession) {
     }
 }
 
+#ifdef STERICSSON_CODEC_SUPPORT
+int AudioSystem::registerLatencyNotificationClient(latency_update_callback cb,
+        void *cookie, audio_io_handle_t output) {
+    Mutex::Autolock _l(gLatencyLock);
+
+    sp<NotificationClient> notificationClient = new NotificationClient();
+    notificationClient->mCb = cb;
+    notificationClient->mCookie = cookie;
+    notificationClient->mOutput = output;
+
+    gNextUniqueLatencyId++;
+    gLatencyNotificationClients.add(gNextUniqueLatencyId, notificationClient);
+    return gNextUniqueLatencyId;
+}
+
+void AudioSystem::unregisterLatencyNotificationClient(int clientId) {
+    Mutex::Autolock _l(gLatencyLock);
+    gLatencyNotificationClients.removeItem(clientId);
+}
+#endif
+
 // ---------------------------------------------------------------------------
 
 void AudioSystem::AudioFlingerClient::binderDied(const wp<IBinder>& who) {
+#ifdef STERICSSON_CODEC_SUPPORT
+    gLatencyLock.lock();
+    AudioSystem::gLatencyNotificationClients.clear();
+    gLatencyLock.unlock();
+#endif
+
     Mutex::Autolock _l(AudioSystem::gLock);
 
     AudioSystem::gAudioFlinger.clear();
@@ -449,6 +482,22 @@ void AudioSystem::AudioFlingerClient::ioConfigChanged(int event, int ioHandle, v
         outputDesc =  new OutputDescriptor(*desc);
         gOutputs.replaceValueFor(ioHandle, outputDesc);
     } break;
+#ifdef STERICSSON_CODEC_SUPPORT
+    case SINK_LATENCY_CHANGED: {
+        int sinkLatency = *((int*)param2);
+        gLock.unlock();
+        gLatencyLock.lock();
+        size_t size = gLatencyNotificationClients.size();
+        for (size_t i = 0; i < size; i++) {
+            sp<NotificationClient> client = gLatencyNotificationClients.valueAt(i);
+            if (client->mOutput == ioHandle) {
+                (*client->mCb)(client->mCookie, ioHandle, sinkLatency);
+            }
+        }
+        gLatencyLock.unlock();
+        gLock.lock();
+    } break;
+#endif
     case INPUT_OPENED:
     case INPUT_CLOSED:
     case INPUT_CONFIG_CHANGED:

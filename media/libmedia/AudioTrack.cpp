@@ -124,6 +124,10 @@ AudioTrack::~AudioTrack()
     LOGV_IF(mSharedBuffer != 0, "Destructor sharedBuffer: %p", mSharedBuffer->pointer());
 
     if (mStatus == NO_ERROR) {
+#ifdef STERICSSON_CODEC_SUPPORT
+        AudioSystem::unregisterLatencyNotificationClient(mLatencyClientId);
+#endif
+
         // Make sure that callback function exits in the case where
         // it is looping on buffer full condition in obtainBuffer().
         // Otherwise the callback thread will never exit.
@@ -820,6 +824,15 @@ status_t AudioTrack::createTrack_l(
     mCblk->waitTimeMs = 0;
     mRemainingFrames = mNotificationFramesAct;
     mLatency = afLatency + (1000*mCblk->frameCount) / sampleRate;
+
+#ifdef STERICSSON_CODEC_SUPPORT
+    if (mLatencyClientId != -1) {
+        AudioSystem::unregisterLatencyNotificationClient(mLatencyClientId);
+    }
+    mLatencyClientId = AudioSystem::registerLatencyNotificationClient(
+                                    &AudioTrack::LatencyCallback, this, output);
+#endif
+
     return NO_ERROR;
 }
 
@@ -1277,6 +1290,18 @@ status_t AudioTrack::dump(int fd, const Vector<String16>& args) const
     ::write(fd, result.string(), result.size());
     return NO_ERROR;
 }
+
+#ifdef STERICSSON_CODEC_SUPPORT
+// static
+void AudioTrack::LatencyCallback(void *cookie, audio_io_handle_t output, uint32_t sinkLatency)
+{
+    AudioTrack *me = static_cast<AudioTrack *>(cookie);
+    uint32_t syncLatency = me->mLatency + sinkLatency;
+    if (me->mCbf != NULL) {
+        me->mCbf(EVENT_LATENCY_CHANGED, me->mUserData, &syncLatency);
+    }
+}
+#endif
 
 // =========================================================================
 
