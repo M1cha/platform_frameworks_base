@@ -234,6 +234,7 @@ struct ANativeWindowBuffer;
 #define EGL_RECORDABLE_ANDROID                  0x3142  /* EGLConfig attribute */
 #endif
 
+#ifndef STERICSSON_CODEC_SUPPORT
 /* EGL_NV_system_time
  */
 #ifndef EGL_NV_system_time
@@ -247,7 +248,7 @@ EGLAPI EGLuint64NV EGLAPIENTRY eglGetSystemTimeNV(void);
 typedef EGLuint64NV (EGLAPIENTRYP PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC)(void);
 typedef EGLuint64NV (EGLAPIENTRYP PFNEGLGETSYSTEMTIMENVPROC)(void);
 #endif
-
+#endif /* STERICSSON_CODEC_SUPPORT */
 
 /* EGL_ANDROID_blob_cache
  */
