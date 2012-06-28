@@ -672,7 +672,11 @@ public:
     // To stop continuous focus, applications should change the focus mode to
     // other modes.
     static const char FOCUS_MODE_CONTINUOUS_PICTURE[];
-
+#ifdef STERICSSON_CODEC_SUPPORT
+    // keys for record stride and slice height
+    static const char KEY_RECORD_STRIDE[];
+    static const char KEY_RECORD_SLICE_HEIGHT[];
+#endif
 private:
     DefaultKeyedVector<String8,String8>    mMap;
 };

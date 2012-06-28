@@ -539,13 +539,23 @@ status_t CameraSource::initWithCameraAccess(
 
     // XXX: query camera for the stride and slice height
     // when the capability becomes available.
+#ifdef STERICSSON_CODEC_SUPPORT
+    int stride = newCameraParams.getInt(CameraParameters::KEY_RECORD_STRIDE);
+    int sliceHeight = newCameraParams.getInt(CameraParameters::KEY_RECORD_SLICE_HEIGHT);
+#endif
+
     mMeta = new MetaData;
     mMeta->setCString(kKeyMIMEType,  MEDIA_MIMETYPE_VIDEO_RAW);
     mMeta->setInt32(kKeyColorFormat, mColorFormat);
     mMeta->setInt32(kKeyWidth,       mVideoSize.width);
     mMeta->setInt32(kKeyHeight,      mVideoSize.height);
+#ifdef STERICSSON_CODEC_SUPPORT
+    mMeta->setInt32(kKeyStride,      stride != -1 ? stride : mVideoSize.width);
+    mMeta->setInt32(kKeySliceHeight, sliceHeight != -1 ? sliceHeight : mVideoSize.height);
+#else
     mMeta->setInt32(kKeyStride,      mVideoSize.width);
     mMeta->setInt32(kKeySliceHeight, mVideoSize.height);
+#endif
     mMeta->setInt32(kKeyFrameRate,   mVideoFrameRate);
     return OK;
 }

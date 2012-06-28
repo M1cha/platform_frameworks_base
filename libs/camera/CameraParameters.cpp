@@ -182,6 +182,12 @@ const char CameraParameters::FOCUS_MODE_EDOF[] = "edof";
 const char CameraParameters::FOCUS_MODE_CONTINUOUS_VIDEO[] = "continuous-video";
 const char CameraParameters::FOCUS_MODE_CONTINUOUS_PICTURE[] = "continuous-picture";
 
+#ifdef STERICSSON_CODEC_SUPPORT
+// keys for record stride and sliceheight
+const char CameraParameters::KEY_RECORD_STRIDE[] = "record-stride";
+const char CameraParameters::KEY_RECORD_SLICE_HEIGHT[] = "record-slice-height";
+#endif
+
 CameraParameters::CameraParameters()
                 : mMap()
 {
