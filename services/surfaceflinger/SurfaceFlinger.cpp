@@ -861,8 +861,10 @@ void SurfaceFlinger::handleRepaint()
 
     // set the frame buffer
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
+#ifndef STERICSSON_CODEC_SUPPORT
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+#endif
 
     uint32_t flags = hw.getFlags();
     if ((flags & DisplayHardware::SWAP_RECTANGLE) ||
@@ -903,8 +905,15 @@ void SurfaceFlinger::handleRepaint()
     mDirtyRegion.clear();
 }
 
+#ifdef STERICSSON_CODEC_SUPPORT
+static bool checkDrawingWithGL(hwc_layer_t* const layers, size_t layerCount);
+#endif
+
 void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
 {
+#ifdef STERICSSON_CODEC_SUPPORT
+    bool useGL = true;
+#endif
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
     HWComposer& hwc(hw.getHwComposer());
     hwc_layer_t* const cur(hwc.getLayers());
@@ -935,6 +944,24 @@ void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
     const size_t fbLayerCount = hwc.getLayerCount(HWC_FRAMEBUFFER);
     status_t err = hwc.prepare();
     LOGE_IF(err, "HWComposer::prepare failed (%s)", strerror(-err));
+
+#ifdef STERICSSON_CODEC_SUPPORT
+    /*
+     * Check if GL will be used
+     */
+    useGL = checkDrawingWithGL(cur, count);
+
+    if (!useGL) {
+        return;
+    }
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    if (UNLIKELY(!mWormholeRegion.isEmpty())) {
+        // should never happen unless the window manager has a bug
+        // draw something...
+        drawWormhole();
+    }
+#endif
 
     if (err == NO_ERROR) {
         // what's happening here is tricky.
@@ -1003,17 +1030,34 @@ void SurfaceFlinger::setupHardwareComposer(Region& dirtyInOut)
     }
 }
 
+#ifdef STERICSSON_CODEC_SUPPORT
+static bool checkDrawingWithGL(hwc_layer_t* const layers, size_t layerCount)
+{
+    bool useGL = false;
+    if (layers) {
+        for (size_t i=0 ; i<layerCount ; i++) {
+            if (layers[i].compositionType == HWC_FRAMEBUFFER) {
+                useGL = true;
+            }
+        }
+    }
+    return useGL;
+}
+#endif
+
 void SurfaceFlinger::composeSurfaces(const Region& dirty)
 {
     const DisplayHardware& hw(graphicPlane(0).displayHardware());
     HWComposer& hwc(hw.getHwComposer());
 
     const size_t fbLayerCount = hwc.getLayerCount(HWC_FRAMEBUFFER);
+#ifndef STERICSSON_CODEC_SUPPORT
     if (UNLIKELY(fbLayerCount && !mWormholeRegion.isEmpty())) {
         // should never happen unless the window manager has a bug
         // draw something...
         drawWormhole();
     }
+#endif
 
     /*
      * and then, render the layers targeted at the framebuffer
@@ -2686,9 +2730,16 @@ sp<GraphicBuffer> GraphicBufferAlloc::createGraphicBuffer(uint32_t w, uint32_t h
         if (err == NO_MEMORY) {
             GraphicBuffer::dumpAllocationsToSystemLog();
         }
+#ifdef STERICSSON_CODEC_SUPPORT
+        LOGE("GraphicBufferAlloc::createGraphicBuffer(w=%d, h=%d, format=%#x) "
+             "failed (%s), handle=%p",
+                w, h, format, strerror(-err), graphicBuffer->handle);
+
+#else
         LOGE("GraphicBufferAlloc::createGraphicBuffer(w=%d, h=%d) "
              "failed (%s), handle=%p",
                 w, h, strerror(-err), graphicBuffer->handle);
+#endif
         return 0;
     }
     return graphicBuffer;
