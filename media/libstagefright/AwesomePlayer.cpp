@@ -1143,8 +1143,21 @@ bool AwesomePlayer::isPlaying() const {
     return (mFlags & PLAYING) || (mFlags & CACHE_UNDERRUN);
 }
 
+#ifdef STERICSSON_CODEC_SUPPORT
+status_t AwesomePlayer::setSurface(const sp<Surface> &surface) {
+    Mutex::Autolock autoLock(mLock);
+
+    mSurface = surface;
+    return setNativeWindow_l(surface);
+}
+#endif
+
 status_t AwesomePlayer::setSurfaceTexture(const sp<ISurfaceTexture> &surfaceTexture) {
     Mutex::Autolock autoLock(mLock);
+
+#ifdef STERICSSON_CODEC_SUPPORT
+    mSurface.clear();
+#endif
 
     status_t err;
     if (surfaceTexture != NULL) {

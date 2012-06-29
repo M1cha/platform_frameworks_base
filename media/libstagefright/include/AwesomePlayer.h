@@ -80,7 +80,9 @@ struct AwesomePlayer {
     status_t pause();
 
     bool isPlaying() const;
-
+#ifdef STERICSSON_CODEC_SUPPORT
+    status_t setSurface(const sp<Surface> &surface);
+#endif
     status_t setSurfaceTexture(const sp<ISurfaceTexture> &surfaceTexture);
     void setAudioSink(const sp<MediaPlayerBase::AudioSink> &audioSink);
     status_t setLooping(bool shouldLoop);
@@ -153,6 +155,9 @@ private:
     bool mUIDValid;
     uid_t mUID;
 
+#ifdef STERICSSON_CODEC_SUPPORT
+    sp<Surface> mSurface;
+#endif
     sp<ANativeWindow> mNativeWindow;
     sp<MediaPlayerBase::AudioSink> mAudioSink;
 
