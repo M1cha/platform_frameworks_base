@@ -12750,12 +12750,12 @@ package android.net.ethernet {
     method public void setNetMask(java.lang.String);
     method public void setRouteAddr(java.lang.String);
     method public void writeToParcel(android.os.Parcel, int);
-    method public static final java.lang.String ETHERNET_CONN_MODE_DHCP() = dhcp;
+    field public static final java.lang.String ETHERNET_CONN_MODE_DHCP = "dhcp";
     field public static final java.lang.String ETHERNET_CONN_MODE_MANUAL = manual;
   }
 
   public class EthernetManager {
-    ctor public EthernetManager(android.net.ethernet.IEthernetManager, android.os.Handler)
+    ctor public EthernetManager(android.net.ethernet.IEthernetManager, android.os.Handler);
     method public java.lang.String[] getDeviceNameList();
     method public android.net.ethernet.EthernetDevInfo getSavedConfig();
     method public int getState();
@@ -12778,11 +12778,11 @@ package android.net.ethernet {
     method public abstract java.lang.String[] getDeviceNameList();
     method public abstract android.net.ethernet.EthernetDevInfo getSavedConfig() throws android.os.RemoteException;
     method public abstract int getState() throws android.os.RemoteException;
-    method public abstract int getTotalInterface() android.os.RemoteException;
-    method public abstract boolean isConfigured(i) android.os.RemoteException;
+    method public abstract int getTotalInterface() throws android.os.RemoteException;
+    method public abstract boolean isConfigured(i) throws android.os.RemoteException;
     method public abstract void setMode(java.lang.String) throws android.os.RemoteException;
     method public abstract void setState(int) throws android.os.RemoteException;
-    method public abstract void updateDevInfo(android.net.ethernet.EthernetDevInfo) thows android.os.RemoteException;
+    method public abstract void updateDevInfo(android.net.ethernet.EthernetDevInfo) throws android.os.RemoteException;
   }
 }
 
