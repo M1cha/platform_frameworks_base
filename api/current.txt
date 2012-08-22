@@ -12733,9 +12733,9 @@ package android.net {
 
 package android.net.ethernet {
 
-  public class name EthernetDevInfo implements android.os.Parcelable {
+  public class EthernetDevInfo implements android.os.Parcelable {
 
-    ctor public android.net.ethernet.EthernetDevInfo EthernetDevInfo ();
+    ctor public EthernetDevInfo ();
     method public int describeContents();
     method public java.lang.String getConnectMode();
     method public java.lang.String getDnsAddr();
@@ -12755,7 +12755,7 @@ package android.net.ethernet {
   }
 
   public class EthernetManager {
-    ctor public android.net.ethernet.EthernetManager EthernetManager(android.net.ethernet.IEthernetManager, android.os.Handler)
+    ctor public EthernetManager(android.net.ethernet.IEthernetManager, android.os.Handler)
     method public java.lang.String[] getDeviceNameList();
     method public android.net.ethernet.EthernetDevInfo getSavedConfig();
     method public int getState();
