@@ -97,7 +97,6 @@ public class EthernetStateTracker implements NetworkStateTracker {
     private NotificationManager mNotificationManager;
     private Notification mNotification;
 
-    private Handler mTrackerTarget;
     public static EthernetStateTracker sInstance;
 
     /* For sending events to connectivity service handler */
@@ -115,7 +114,7 @@ public class EthernetStateTracker implements NetworkStateTracker {
         if (localLOGV) Slog.v(TAG,"Successed");
         HandlerThread dhcpThread = new HandlerThread("DHCP Handler Thread");
         dhcpThread.start();
-//        mDhcpTarget = new DhcpHandler(dhcpThread.getLooper(), this);
+        mDhcpTarget = new DhcpHandler(dhcpThread.getLooper());
         mMonitor = new EthernetMonitor(this);
 
         mNetworkInfo = new NetworkInfo(netType, 0, networkName, "");
@@ -157,6 +156,7 @@ public class EthernetStateTracker implements NetworkStateTracker {
         }
         IntentFilter filter = new IntentFilter();
         filter.addAction(EthernetManager.NETWORK_STATE_CHANGED_ACTION);
+        mMonitor.startMonitoring();
     }
 
     /**
@@ -170,16 +170,6 @@ public class EthernetStateTracker implements NetworkStateTracker {
     }
 
     /**
-     * Re-enable connectivity to a network after a {@link #teardown()}.
-     */
-    public boolean reconnect() {
-        mTeardownRequested.set(false);
-        mEthernetManager.startEthernet();
-        return true;
-    }
-
-
-    /**
      * Stop etherent interface
      * @param suspend {@code false} disable the interface {@code true} only reset the connection without disable the interface
      * @return true
@@ -188,7 +178,7 @@ public class EthernetStateTracker implements NetworkStateTracker {
         if (mEthernetManager != null) {
             EthernetDevInfo info = mEthernetManager.getSavedConfig();
             if (info != null && mEthernetManager.isConfigured()) {
-/*                synchronized (mDhcpTarget) {
+                synchronized (mDhcpTarget) {
                     mInterfaceStopped = true;
                     if (localLOGV) Slog.i(TAG, "stop dhcp and interface");
                     mDhcpTarget.removeMessages(EVENT_DHCP_START);
@@ -201,7 +191,7 @@ public class EthernetStateTracker implements NetworkStateTracker {
                     if (!suspend)
                         NetworkUtils.disableInterface(ifname);
                 }
-*/
+
             }
         }
         return true;
@@ -265,7 +255,8 @@ public class EthernetStateTracker implements NetworkStateTracker {
                 event = EVENT_INTERFACE_CONFIGURATION_FAILED;
                 if (localLOGV) Slog.w(TAG, "Static IP configuration failed");
             }
-//            this.sendEmptyMessage(event);
+            if (mDhcpTarget != null)
+                mDhcpTarget.sendEmptyMessage(event);
         }
         return true;
     }
@@ -287,9 +278,9 @@ public class EthernetStateTracker implements NetworkStateTracker {
                     if (localLOGV) Slog.i(TAG, "reset device " + mInterfaceName);
                     NetworkUtils.resetConnections(mInterfaceName, NetworkUtils.RESET_ALL_ADDRESSES);
                      // Stop DHCP
-//                    if (mDhcpTarget != null) {
-//                        mDhcpTarget.removeMessages(EVENT_DHCP_START);
-//                    }
+                    if (mDhcpTarget != null) {
+                        mDhcpTarget.removeMessages(EVENT_DHCP_START);
+                    }
                     if (!NetworkUtils.stopDhcp(mInterfaceName)) {
                         if (localLOGV) Slog.w(TAG, "Could not stop DHCP");
                     }
@@ -319,7 +310,7 @@ public class EthernetStateTracker implements NetworkStateTracker {
         Slog.w(TAG, "ignoring setPolicyDataEnable(" + enabled + ")");
     }
 
-/*    @Override
+    @Override
     public boolean reconnect() {
         try {
             synchronized (this) {
@@ -340,17 +331,12 @@ public class EthernetStateTracker implements NetworkStateTracker {
         return false;
 
     }
-*/
+
 //    @Override
     public boolean setRadio(boolean turnOn) {
         return false;
     }
 
-/*
-    public boolean teardown() {
-        return (mEthernetManager != null) ? stopInterface(false) : false;
-    }
-*/
     private void postNotification(int event) {
         String ns = Context.NOTIFICATION_SERVICE;
         Intent intent = new Intent(EthernetManager.ETHERNET_STATE_CHANGED_ACTION);
@@ -373,99 +359,96 @@ public class EthernetStateTracker implements NetworkStateTracker {
         }
     }
 
-    public void handleMessage(Message msg) {
+    private class DhcpHandler extends Handler {
+         public DhcpHandler(Looper looper) {
+             super(looper);
+         }
 
-        synchronized (this) {
-            switch (msg.what) {
-            case EVENT_INTERFACE_CONFIGURATION_SUCCEEDED:
-                if (localLOGV) Slog.i(TAG, "received configured succeeded, stack=" + mStackConnected + " HW=" + mHWConnected);
-                mStackConnected = true;
-                if (mHWConnected)
-                    setState(true, msg.what);
-                break;
-            case EVENT_INTERFACE_CONFIGURATION_FAILED:
-                mStackConnected = false;
-                //start to retry ?
-                break;
-            case EVENT_HW_CONNECTED:
-                if (localLOGV) Slog.i(TAG, "received HW connected, stack=" + mStackConnected + " HW=" + mHWConnected);
-                mHWConnected = true;
-                if (mStackConnected)
-                    setState(true, msg.what);
-                break;
-            case EVENT_HW_DISCONNECTED:
-                if (localLOGV) Slog.i(TAG, "received disconnected events, stack=" + mStackConnected + " HW=" + mHWConnected);
-                setState(mHWConnected = false, msg.what);
-                break;
-            case EVENT_HW_PHYCONNECTED:
-                if (localLOGV) Slog.i(TAG, "interface up event, kick off connection request");
-                if (!mStartingDhcp) {
-                    int state = mEthernetManager.getState();
-                    if (state != mEthernetManager.ETHERNET_STATE_DISABLED) {
-                        EthernetDevInfo info = mEthernetManager.getSavedConfig();
-                        if (info != null && mEthernetManager.isConfigured()) {
-                            try {
-                                configureInterface(info);
-                            } catch (UnknownHostException e) {
-                                 // TODO Auto-generated catch block
-                                 //e.printStackTrace();
-                                 Slog.e(TAG, "Cannot configure interface");
+        public void handleMessage(Message msg) {
+
+            synchronized (this) {
+                switch (msg.what) {
+                case EVENT_DHCP_START:
+                    int event;
+                    if (!mInterfaceStopped) {
+                        if (localLOGV) Slog.d(TAG, "DhcpHandler: DHCP request started");
+                        DhcpInfoInternal dhcpInfoInternal = new DhcpInfoInternal();
+                        if (NetworkUtils.runDhcp(mInterfaceName, dhcpInfoInternal)) {
+                            event = EVENT_INTERFACE_CONFIGURATION_SUCCEEDED;
+                            if (localLOGV) Slog.d(TAG, "DhcpHandler: DHCP request succeeded: " + dhcpInfoInternal.toString());
+                       } else {
+                            event = EVENT_INTERFACE_CONFIGURATION_FAILED;
+                            Slog.e(TAG, "DhcpHandler: DHCP request failed: " + NetworkUtils.getDhcpError());
+                       }
+                    } else {
+                            mInterfaceStopped = false;
+                    }
+                    mStartingDhcp = false;
+                    break;
+                case EVENT_INTERFACE_CONFIGURATION_SUCCEEDED:
+                    if (localLOGV) Slog.i(TAG, "received configured succeeded, stack=" + mStackConnected + " HW=" + mHWConnected);
+                    mStackConnected = true;
+                    if (mHWConnected)
+                        setState(true, msg.what);
+                    break;
+                case EVENT_INTERFACE_CONFIGURATION_FAILED:
+                    mStackConnected = false;
+                    //start to retry ?
+                    break;
+                case EVENT_HW_CONNECTED:
+                    if (localLOGV) Slog.i(TAG, "received HW connected, stack=" + mStackConnected + " HW=" + mHWConnected);
+                    mHWConnected = true;
+                    if (mStackConnected)
+                        setState(true, msg.what);
+                    break;
+                case EVENT_HW_DISCONNECTED:
+                    if (localLOGV) Slog.i(TAG, "received disconnected events, stack=" + mStackConnected + " HW=" + mHWConnected);
+                    setState(mHWConnected = false, msg.what);
+                    break;
+                case EVENT_HW_PHYCONNECTED:
+                    if (localLOGV) Slog.i(TAG, "interface up event, kick off connection request");
+                    if (!mStartingDhcp) {
+                        int state = mEthernetManager.getState();
+                        if (state != mEthernetManager.ETHERNET_STATE_DISABLED) {
+                            EthernetDevInfo info = mEthernetManager.getSavedConfig();
+                            if (info != null && mEthernetManager.isConfigured()) {
+                                try {
+                                    configureInterface(info);
+                                } catch (UnknownHostException e) {
+                                     // TODO Auto-generated catch block
+                                     //e.printStackTrace();
+                                     Slog.e(TAG, "Cannot configure interface");
+                                }
                             }
                         }
                     }
+                    break;
                 }
-                break;
             }
         }
     }
 
-    private class DhcpHandler extends Handler {
-         public DhcpHandler(Looper looper, Handler target) {
-             super(looper);
-             mTrackerTarget = target;
-         }
-
-         public void handleMessage(Message msg) {
-             int event;
-
-             switch (msg.what) {
-                 case EVENT_DHCP_START:
-                     if (!mInterfaceStopped) {
-                         if (localLOGV) Slog.d(TAG, "DhcpHandler: DHCP request started");
-
-                         DhcpInfoInternal dhcpInfoInternal = new DhcpInfoInternal();
-                         if (NetworkUtils.runDhcp(mInterfaceName, dhcpInfoInternal)) {
-                             event = EVENT_INTERFACE_CONFIGURATION_SUCCEEDED;
-                             if (localLOGV) Slog.d(TAG, "DhcpHandler: DHCP request succeeded: " + mDhcpInfoInternal.toString());
-                        } else {
-                             event = EVENT_INTERFACE_CONFIGURATION_FAILED;
-                             Slog.e(TAG, "DhcpHandler: DHCP request failed: " + NetworkUtils.getDhcpError());
-                        }
-                     } else {
-                             mInterfaceStopped = false;
-                     }
-                     mStartingDhcp = false;
-                     break;
-             }
-         }
-    }
-
     public void notifyPhyConnected(String ifname) {
         if (localLOGV) Slog.v(TAG, "report interface is up for " + ifname);
-        synchronized(this) {
-//            this.sendEmptyMessage(EVENT_HW_PHYCONNECTED);
-        }
-
+            if (mDhcpTarget != null)
+                mDhcpTarget.sendEmptyMessage(EVENT_HW_PHYCONNECTED);
     }
 
     public void notifyStateChange(String ifname,DetailedState state) {
         if (localLOGV) Slog.i(TAG, "report new state " + state.toString() + " on dev " + ifname);
         if (ifname.equals(mInterfaceName)) {
             if (localLOGV) Slog.v(TAG, "update network state tracker");
-            synchronized(this) {
-     //           this.sendEmptyMessage(state.equals(DetailedState.CONNECTED, null, null)
-     //               ? EVENT_HW_CONNECTED : EVENT_HW_DISCONNECTED);
-
+            if (mNetworkInfo.getDetailedState() != state) {
+                if (mNetworkInfo.getDetailedState() == DetailedState.CONNECTED) {
+                    mNetworkInfo.setDetailedState(DetailedState.CONNECTED, null, null);
+                    if (mDhcpTarget != null)
+                        mDhcpTarget.sendEmptyMessage(EVENT_HW_CONNECTED);
+                } else {
+                    mNetworkInfo.setDetailedState(DetailedState.DISCONNECTED, null, null);
+                    stopInterface(true);
+                    if (mDhcpTarget != null)
+                        mDhcpTarget.sendEmptyMessage(EVENT_HW_DISCONNECTED);
+                }
             }
         }
     }

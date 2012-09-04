@@ -42,7 +42,7 @@ public class EthernetMonitor {
     private static final int RM_ADDR = 21;
     private static final int NEW_LINK = 16;
     private static final int DEL_LINK = 17;
-    private static final boolean localLOGV = false;
+    private static final boolean localLOGV = true;
 
     private EthernetStateTracker mEthernetStateTracker;
 
