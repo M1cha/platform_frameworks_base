@@ -45,6 +45,13 @@ LOCAL_SRC_FILES:= \
     Visualizer.cpp \
     MemoryLeakTrackUtil.cpp \
     fixedfft.cpp.arm
+    
+ifeq ($(BOARD_USES_AUDIO_LEGACY),true)
+    LOCAL_SRC_FILES+= \
+        AudioParameter.cpp
+
+    LOCAL_CFLAGS += -DUSES_AUDIO_LEGACY
+endif
 
 LOCAL_SHARED_LIBRARIES := \
 	libui libcutils libutils libbinder libsonivox libicuuc libexpat \
