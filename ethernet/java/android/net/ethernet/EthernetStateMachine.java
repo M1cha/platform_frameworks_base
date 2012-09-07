@@ -91,6 +91,7 @@ public class EthernetStateMachine extends StateMachine {
     private ConnectivityManager mCm;
 
     private DhcpHandler mDhcpTarget;
+    private Handler mTrackerTarget;
     private String mInterfaceName;
 
     private LinkCapabilities mLinkCapabilities;
@@ -251,8 +252,7 @@ public class EthernetStateMachine extends StateMachine {
                 "dhcp." + mInterfaceName + ".dns2"
              };
 
-            if (mDhcpTarget != null)
-                mDhcpTarget.sendEmptyMessage(EVENT_DHCP_START);
+            mDhcpTarget.sendEmptyMessage(EVENT_DHCP_START);
         } else {
             int event;
             sDnsPropNames = new String[] {
@@ -328,8 +328,7 @@ public class EthernetStateMachine extends StateMachine {
                 synchronized (mDhcpTarget) {
                     mInterfaceStopped = true;
                     Slog.i(TAG, "stop dhcp and interface");
-                    if (mDhcpTarget != null)
-                        mDhcpTarget.removeMessages(EVENT_DHCP_START);
+                    mDhcpTarget.removeMessages(EVENT_DHCP_START);
                     String ifname = info.getIfName();
 
                     if (!NetworkUtils.stopDhcp(ifname)) {
@@ -366,31 +365,10 @@ public class EthernetStateMachine extends StateMachine {
         }
     }
 
-    private class DhcpHandler extends Handler {
-         public DhcpHandler(Looper looper) {
-             super(looper);
-         }
-
     public void handleMessage(Message msg) {
+
         synchronized (this) {
             switch (msg.what) {
-            case EVENT_DHCP_START:
-                int event;
-                if (!mInterfaceStopped) {
-                    if (localLOGV) Slog.d(TAG, "DhcpHandler: DHCP request started");
-
-                    if (NetworkUtils.runDhcp(mInterfaceName, mDhcpInfoInternal)) {
-                        event = EVENT_INTERFACE_CONFIGURATION_SUCCEEDED;
-                        if (localLOGV) Slog.d(TAG, "DhcpHandler: DHCP request succeeded: " + mDhcpInfoInternal.toString());
-                   } else {
-                        event = EVENT_INTERFACE_CONFIGURATION_FAILED;
-                        Slog.e(TAG, "DhcpHandler: DHCP request failed: " + NetworkUtils.getDhcpError());
-                   }
-                } else {
-                        mInterfaceStopped = false;
-                }
-                mStartingDhcp = false;
-                break;
             case EVENT_INTERFACE_CONFIGURATION_SUCCEEDED:
                 if (localLOGV) Slog.i(TAG, "received configured succeeded, stack=" + mStackConnected + " HW=" + mHWConnected);
                 mStackConnected = true;
@@ -432,6 +410,38 @@ public class EthernetStateMachine extends StateMachine {
             }
         }
     }
+
+    private class DhcpHandler extends Handler {
+         public DhcpHandler(Looper looper) {
+             super(looper);
+         }
+
+         public void handleMessage(Message msg) {
+             int event;
+
+             switch (msg.what) {
+                 case EVENT_DHCP_START:
+                     synchronized (mDhcpTarget) {
+                         if (!mInterfaceStopped) {
+                             Slog.d(TAG, "DhcpHandler: DHCP request started");
+                             DhcpInfoInternal dhcpInfoInternal = new DhcpInfoInternal();
+                             if (NetworkUtils.runDhcp(mInterfaceName, dhcpInfoInternal)) {
+                                 SystemProperties.set("net.dns1", dhcpInfoInternal.dns1);
+                                 event = EVENT_INTERFACE_CONFIGURATION_SUCCEEDED;
+                                 Slog.d(TAG, "DhcpHandler: DHCP request succeeded: " + dhcpInfoInternal.toString());
+                            } else {
+                                 event = EVENT_INTERFACE_CONFIGURATION_FAILED;
+                                 Slog.e(TAG, "DhcpHandler: DHCP request failed: " + NetworkUtils.getDhcpError());
+                            }
+                          //  sendMessage(event);
+                         } else {
+                                 mInterfaceStopped = false;
+                         }
+                         mStartingDhcp = false;
+                     }
+                     break;
+             }
+         }
     }
 
     static LinkProperties getLinkProperties() {
